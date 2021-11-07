@@ -11,7 +11,10 @@ keywords = ["eeg", "datasets", "reproducibility", "bci", "benchmark"]
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<3.11"
+numpy = "^1.21.4"
+scipy = "^1.7.2"
+scikit-learn = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.15.0"
