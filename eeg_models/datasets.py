@@ -1,21 +1,48 @@
+from eeg_models.types import Optional, Callable, Dict, Any, Directory
 import torch
 import moabb.datasets
 
+class AbstractEegDataset:
+    def __init__(
+        self,
+        root: Optional[Directory] = None,
+        split: str = 'train',
+        transforms: Optional[Callable] = None,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+        download: bool = True,
+    ):
+        self.root = root
+        self.split = split
+        self.transforms = transforms
+        self.transform = transform
+        self.target_transform = target_transform
 
-m_dataset = moabb.datasets.bi2013a(
-    NonAdaptive=True,
-    Adaptive=True,
-    Training=True,
-    Online=True,
-)
+        if download:
+            self.download()
 
-m_dataset.download()
+    def download(self):
+        raise NotImplementedError()
 
-m_data = m_dataset.get_data()
+    def __len__(self) -> int:
+        raise NotImplementedError()
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        raise NotImplementedError()
 
 
-class Dataset:  
+class BraininvaedersDataset(AbstractEegDataset):  
     def __init__(self, m_data):        
+        m_dataset = moabb.datasets.bi2013a(
+            NonAdaptive=True,
+            Adaptive=True,
+            Training=True,
+            Online=True,
+        )
+
+        m_dataset.download()
+
+        m_data = m_dataset.get_data()
         self.m_data = m_data       
         
     def raw_dataset(self):
