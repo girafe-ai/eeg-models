@@ -1,4 +1,4 @@
-from eeg_models.types import Optional, Callable, Dict, Any, Directory
+from eeg_models.types import Optional, Callable, Dict, Any, Directory, List
 import torch
 import moabb.datasets
 
@@ -22,6 +22,10 @@ class AbstractEegDataset:
             self.download()
 
     def download(self):
+        raise NotImplementedError()
+
+    @property
+    def channels(self) -> List[str]:
         raise NotImplementedError()
 
     def __len__(self) -> int:
