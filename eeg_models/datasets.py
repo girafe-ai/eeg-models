@@ -61,7 +61,7 @@ class BrainInvadersDataset(AbstractEegDataset):
             raw_dataset.append((eegs, markers))
         return raw_dataset
 
-    def channels(self) -> List:
+    def channels(self) -> List[str]:
         return self.data[1]["session_1"]["run_1"].ch_names[:-1]
 
     def __getitem__(self, item_idx: int) -> dict:
