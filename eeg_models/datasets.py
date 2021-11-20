@@ -50,7 +50,7 @@ class BrainInvadersDataset(AbstractEegDataset):
 
         self.data = m_dataset.get_data()
 
-    def raw_dataset(self):
+    def raw_dataset(self) -> List:
         raw_dataset = []
         for _, sessions in sorted(self.data.items()):
             eegs, markers = [], []
@@ -61,7 +61,7 @@ class BrainInvadersDataset(AbstractEegDataset):
             raw_dataset.append((eegs, markers))
         return raw_dataset
 
-    def channels(self):
+    def channels(self) -> List:
         return self.data[1]["session_1"]["run_1"].ch_names[:-1]
 
     def __getitem__(self, item_idx: int) -> dict:
