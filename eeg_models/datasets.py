@@ -1,5 +1,4 @@
 import moabb.datasets
-import torch
 
 from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 
