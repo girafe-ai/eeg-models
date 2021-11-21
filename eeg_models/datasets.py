@@ -1,4 +1,4 @@
-import moabb.datasets
+from moabb.datasets import bi2013a
 
 from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 
@@ -22,23 +22,31 @@ class AbstractEegDataset:
         if download:
             self.download()
 
-    def download(self):
-        raise NotImplementedError()
-
-    @property
-    def channels(self) -> List[str]:
-        raise NotImplementedError()
-
     def __len__(self) -> int:
         raise NotImplementedError()
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         raise NotImplementedError()
 
+    @property
+    def channels(self) -> List[str]:
+        raise NotImplementedError()
+
+    def download(self):
+        raise NotImplementedError()
+
 
 class BrainInvadersDataset(AbstractEegDataset):
-    def __init__(self):
-        m_dataset = moabb.datasets.bi2013a(
+    def __init__(
+        self,
+        root: Optional[Directory] = None,
+        split: str = "train",
+        transforms: Optional[Callable] = None,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+        download: bool = True,
+    ):
+        m_dataset = bi2013a(
             NonAdaptive=True,
             Adaptive=True,
             Training=True,
@@ -48,6 +56,16 @@ class BrainInvadersDataset(AbstractEegDataset):
         m_dataset.download()
 
         self.data = m_dataset.get_data()
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, index: int) -> dict:
+        return {"subject": index, "data": self.data[index]}
+
+    @property
+    def channels(self) -> List[str]:
+        return self.data[1]["session_1"]["run_1"].ch_names[:-1]
 
     def raw_dataset(self) -> List:
         raw_dataset = []
@@ -59,14 +77,3 @@ class BrainInvadersDataset(AbstractEegDataset):
                 markers.append(data[-1])
             raw_dataset.append((eegs, markers))
         return raw_dataset
-
-    def channels(self) -> List[str]:
-        return self.data[1]["session_1"]["run_1"].ch_names[:-1]
-
-    def __getitem__(self, item_idx: int) -> dict:
-        self.current_subject = item_idx
-        self.current_data = self.data[item_idx]
-        return {"subject": self.current_subject, "data": self.current_data}
-
-    def __len__(self) -> int:
-        return len(self.data)
