@@ -46,17 +46,21 @@ class BrainInvadersDataset(AbstractEegDataset):
         target_transform: Optional[Callable] = None,
         download: bool = True,
     ):
+        self.m_dataset = bi2013a(
+            NonAdaptive=True,
+            Adaptive=True,
+            Training=True,
+            Online=True,
+        )
+
         super().__init__(root, split, transforms, transform, target_transform, download)
 
-        self.m_data = None
-
-        if download:
-            self.download()
+        self.m_data = self.m_dataset.get_data()
 
         self.data = []
         for _, sessions in sorted(self.m_data.items()):
             eegs, markers = [], []
-            for _item, run in sorted(sessions["session_1"].items()):
+            for _, run in sorted(sessions["session_1"].items()):
                 r_data = run.get_data()
                 eegs.append(r_data[:-1])
                 markers.append(r_data[-1])
@@ -66,22 +70,11 @@ class BrainInvadersDataset(AbstractEegDataset):
         return len(self.data)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        current_eegs = self.data[index][0]
-        current_markers = self.data[index][1]
-        return {"eegs": current_eegs, "markers": current_markers}
+        return {"eegs": self.data[index][0], "markers": self.data[index][1]}
 
     @property
     def channels(self) -> List[str]:
         return self.m_data[1]["session_1"]["run_1"].ch_names[:-1]
 
     def download(self):
-        m_dataset = bi2013a(
-            NonAdaptive=True,
-            Adaptive=True,
-            Training=True,
-            Online=True,
-        )
-
-        m_dataset.download()
-
-        self.m_data = m_dataset.get_data()
+        self.m_dataset.download()
