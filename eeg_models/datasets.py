@@ -46,6 +46,35 @@ class BrainInvadersDataset(AbstractEegDataset):
         target_transform: Optional[Callable] = None,
         download: bool = True,
     ):
+        super().__init__(root, split, transforms, transform, target_transform, download)
+
+        self.m_data = None
+
+        if download:
+            self.download()
+
+        self.data = []
+        for _, sessions in sorted(self.m_data.items()):
+            eegs, markers = [], []
+            for _item, run in sorted(sessions["session_1"].items()):
+                r_data = run.get_data()
+                eegs.append(r_data[:-1])
+                markers.append(r_data[-1])
+            self.data.append((eegs, markers))
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        current_eegs = self.data[index][0]
+        current_markers = self.data[index][1]
+        return {"eegs": current_eegs, "markers": current_markers}
+
+    @property
+    def channels(self) -> List[str]:
+        return self.m_data[1]["session_1"]["run_1"].ch_names[:-1]
+
+    def download(self):
         m_dataset = bi2013a(
             NonAdaptive=True,
             Adaptive=True,
@@ -55,25 +84,4 @@ class BrainInvadersDataset(AbstractEegDataset):
 
         m_dataset.download()
 
-        self.data = m_dataset.get_data()
-
-    def __len__(self) -> int:
-        return len(self.data)
-
-    def __getitem__(self, index: int) -> dict:
-        return {"subject": index, "data": self.data[index]}
-
-    @property
-    def channels(self) -> List[str]:
-        return self.data[1]["session_1"]["run_1"].ch_names[:-1]
-
-    def raw_dataset(self) -> List:
-        raw_dataset = []
-        for _, sessions in sorted(self.data.items()):
-            eegs, markers = [], []
-            for _item, run in sorted(sessions["session_1"].items()):
-                data = run.get_data()
-                eegs.append(data[:-1])
-                markers.append(data[-1])
-            raw_dataset.append((eegs, markers))
-        return raw_dataset
+        self.m_data = m_dataset.get_data()
