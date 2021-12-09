@@ -78,16 +78,12 @@ class EEGNet(nn.Module):
             )
 
         # Block 1
-        self.padding_1 = nn.ZeroPad2d(
-            (kernLength // 2 - 1, kernLength // 2, 0, 0)
-        )  # padding='same' is not supported on pycharm
+        self.padding_1 = nn.ZeroPad2d((kernLength // 2 - 1, kernLength // 2, 0, 0))
         self.conv_1 = nn.Conv2d(1, F1, (1, kernLength), bias=False)
         self.batchnorm_1 = nn.BatchNorm2d(F1, False)
         self.depthwise_1 = nn.Conv2d(F1, D * F1, (Chans, 1), groups=F1, bias=False)
         self.batchnorm_2 = nn.BatchNorm2d(D * F1, False)
-        self.avgpool_1 = nn.AvgPool2d(
-            1, 4
-        )  # to reduce the sampling rate of the signal from 128 to 32
+        self.avgpool_1 = nn.AvgPool2d(1, 4)
         self.dropout_1 = dropoutType
 
         # Block 2
