@@ -9,7 +9,7 @@ from moabb.datasets import download as dl
 from moabb.datasets.base import BaseDataset
 
 
-BI2013a_URL = "https://zenodo.org/record/1494240/files/"
+bi2013a_url = "https://zenodo.org/record/1494240/files/"
 
 
 class bi2013a(BaseDataset):
@@ -60,7 +60,7 @@ class bi2013a(BaseDataset):
         if subject not in self.subject_list:
             raise (ValueError("Invalid subject number"))
 
-        url = "{:s}subject{:d}.zip".format(BI2013a_URL, subject)
+        url = "{:s}subject{:d}.zip".format(bi2013a_url, subject)
         path_zip = dl.data_dl(url, "BRAININVADERS")
         path_folder = path_zip.strip("subject{:d}.zip".format(subject))
 
