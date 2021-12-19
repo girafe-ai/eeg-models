@@ -1,6 +1,16 @@
 import torch.nn as nn
 
 
+class View(nn.Module):
+    def __init__(self, shape):
+        super().__init__()
+        self.shape = shape
+
+    def forward(self, input):
+        input = input.view(self.shape)
+        return input
+
+
 class EegNet(nn.Sequential):
     """Pytorch Implementation of EegNet.
 
@@ -40,6 +50,7 @@ class EegNet(nn.Sequential):
         if f2 is None:
             f2 = f1 * d
         super().__init__(
+            View((1, 1, n_channels, n_samples)),
             nn.Conv2d(
                 in_channels=1,
                 out_channels=f1,
