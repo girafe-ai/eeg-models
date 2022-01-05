@@ -1,21 +1,12 @@
 import torch.nn as nn
 
 
-class View(nn.Module):
-    def __init__(self, shape):
-        super().__init__()
-        self.shape = shape
-
-    def forward(self, input):
-        input = input.view(self.shape)
-        return input
-
-
 class EegNet(nn.Sequential):
     """Pytorch Implementation of EegNet.
 
-    This implementation is mostly based on the original paper which is models can be found on the
-    'https://github.com/vlawhern/arl-eegmodels' that is implemented in Keras.
+    This implementation is mostly based on the original paper "EEGNet: A Compact Convolutional Network
+    for EEG-based Brain-Computer Interfaces" which can be found on the "https://arxiv.org/abs/1611.08024"
+    and repository is: 'https://github.com/vlawhern/arl-eegmodels'.
 
     Assumes the input signal is sampled at 128Hz and used 64 channels. If you want to use this model
     for any other sampling rate and channels, you will need to modify the lengths of temporal
@@ -26,89 +17,66 @@ class EegNet(nn.Sequential):
       n_channels: number of channels in the EEG data.
       n_samples: number of time points in the EEG data.
       dropout_rate: dropout fraction.
-      rate: sampling rate.
-      kernel: length of temporal convolution in first layer. It is equal to half the sampling rate.
-      f1: number of temporal filters default: f1 = 8.
-      f2: number of pointwise filters default: f2 = f1 * d.
-      d: number of spatial filters default: d = 2.
+      rate: sampling rate in in Hertz (Hz).
+      f1: number of temporal filters.
+      d: number of spatial filters.
+      f2: number of pointwise filters.
     """
 
     def __init__(
         self,
         n_classes: int,
-        n_channels=64,
-        n_samples=128,
-        dropout_rate=0.5,
-        rate=128,
-        f1=8,
-        d=2,
+        n_channels: int = 64,
+        n_samples: int = 128,
+        dropout_rate: float = 0.5,
+        rate: int = 128,
+        f1: int = 8,
+        d: int = 2,
         f2=None,
         device=None,
         dtype=None,
-    ):
+    ) -> None:
+        self.device = device
+        self.dtype = dtype
         kernel = rate // 2
         if f2 is None:
             f2 = f1 * d
         super().__init__(
-            View((1, 1, n_channels, n_samples)),
-            nn.Conv2d(
-                in_channels=1,
-                out_channels=f1,
-                kernel_size=(1, kernel),
-                padding="same",
-                bias=False,
-                device=device,
-                dtype=dtype,
+            nn.Unflatten(0, (1, 1, n_channels)),
+            nn.Conv2d(1, f1, (1, kernel), padding="same", bias=False).to(
+                device=self.device, dtype=self.dtype
             ),
-            nn.BatchNorm2d(
-                num_features=f1, track_running_stats=False, device=device, dtype=dtype
+            nn.BatchNorm2d(f1, track_running_stats=False).to(
+                device=self.device, dtype=self.dtype
             ),
-            nn.Conv2d(
-                in_channels=f1,
-                out_channels=d * f1,
-                kernel_size=(n_channels, 1),
-                groups=f1,
-                bias=False,
-                device=device,
-                dtype=dtype,
+            nn.Conv2d(f1, d * f1, (n_channels, 1), groups=f1, bias=False).to(
+                device=self.device, dtype=self.dtype
             ),
-            nn.BatchNorm2d(
-                num_features=d * f1, track_running_stats=False, device=device, dtype=dtype
+            nn.BatchNorm2d(d * f1, track_running_stats=False).to(
+                device=self.device, dtype=self.dtype
             ),
             nn.ELU(),
-            nn.AvgPool2d(kernel_size=(1, 4)),
-            nn.Dropout(p=dropout_rate),
+            nn.AvgPool2d((1, 4)),
+            nn.Dropout(dropout_rate),
             nn.Conv2d(
-                in_channels=d * f1,
-                out_channels=d * f1,
-                kernel_size=(1, kernel // 4),
+                d * f1,
+                d * f1,
+                (1, kernel // 4),
                 padding="same",
                 groups=f1 * d,
                 bias=False,
-                device=device,
-                dtype=dtype,
+            ).to(device=self.device, dtype=self.dtype),
+            nn.Conv2d(d * f1, d * f1, 1, bias=False).to(
+                device=self.device, dtype=self.dtype
             ),
-            nn.Conv2d(
-                in_channels=d * f1,
-                out_channels=d * f1,
-                kernel_size=1,
-                bias=False,
-                device=device,
-                dtype=dtype,
-            ),
-            nn.BatchNorm2d(
-                num_features=d * f1, track_running_stats=False, device=device, dtype=dtype
+            nn.BatchNorm2d(d * f1, track_running_stats=False).to(
+                device=self.device, dtype=self.dtype
             ),
             nn.ELU(),
-            nn.AvgPool2d(kernel_size=(1, 8)),
-            nn.Dropout(p=dropout_rate),
+            nn.AvgPool2d((1, 8)),
+            nn.Dropout(dropout_rate),
             nn.Flatten(),
-            nn.Linear(
-                in_features=f2 * (n_samples // 32),
-                out_features=n_classes,
-                bias=False,
-                device=device,
-                dtype=dtype,
+            nn.Linear(f2 * (n_samples // 32), n_classes, False).to(
+                device=self.device, dtype=self.dtype
             ),
-            nn.Softmax(),
         )
