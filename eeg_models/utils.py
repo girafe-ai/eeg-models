@@ -1,4 +1,4 @@
-from .types import Any
+from eeg_models.types import Any
 
 
 def n_parameters(model: Any) -> int:
