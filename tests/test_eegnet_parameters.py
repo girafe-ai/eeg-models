@@ -1,4 +1,4 @@
-from eeg_models.EegNet import EegNet
+from eeg_models.eegnet import EegNet
 from eeg_models.utils import n_parameters
 
 
