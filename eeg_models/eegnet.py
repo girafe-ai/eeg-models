@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from eeg_models.types import Device, Optional
@@ -43,32 +44,35 @@ class EegNet(nn.Sequential):
 
         kernel = rate // 2
         if f2 is None:
-            f2 = f1 * d
+            f2 = d * f1
+        rate_drops = (4, 8)
 
         super().__init__(
             nn.Unflatten(0, (1, 1, n_channels)),
+            # block 1
             nn.Conv2d(1, f1, (1, kernel), padding="same", bias=False),
-            nn.BatchNorm2d(f1, track_running_stats=False),
+            nn.BatchNorm2d(f1),
             nn.Conv2d(f1, d * f1, (n_channels, 1), groups=f1, bias=False),
-            nn.BatchNorm2d(d * f1, track_running_stats=False),
-            nn.ELU(),
-            nn.AvgPool2d((1, 4)),
+            nn.BatchNorm2d(d * f1),
+            nn.ELU(inplace=True),
+            nn.AvgPool2d((1, rate_drops[0])),
             nn.Dropout(dropout_rate),
+            # block 2
             nn.Conv2d(
                 d * f1,
                 d * f1,
-                (1, kernel // 4),
+                (1, kernel // rate_drops[0]),
                 padding="same",
-                groups=f1 * d,
+                groups=d * f1,
                 bias=False,
             ),
-            nn.Conv2d(d * f1, d * f1, 1, bias=False),
-            nn.BatchNorm2d(d * f1, track_running_stats=False),
-            nn.ELU(),
-            nn.AvgPool2d((1, 8)),
+            nn.Conv2d(d * f1, f2, 1, bias=False),
+            nn.BatchNorm2d(f2),
+            nn.ELU(inplace=True),
+            nn.AvgPool2d((1, rate_drops[1])),
             nn.Dropout(dropout_rate),
             nn.Flatten(),
-            nn.Linear(f2 * (n_samples // 32), n_classes, False),
+            nn.Linear(f2 * (n_samples // torch.prod(rate_drops)), n_classes),
         )
 
         self.to(self.device, self.dtype)
