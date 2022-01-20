@@ -71,7 +71,9 @@ class EegNet(nn.Sequential):
             nn.AvgPool2d((1, rate_drops[1])),
             nn.Dropout(dropout_rate),
             nn.Flatten(),
-            nn.Linear(f2 * (n_samples // (rate_drops[0] * rate_drops[1])), n_classes),
+            nn.Linear(
+                f2 * (n_samples // (rate_drops[0] * rate_drops[1])), n_classes, False
+            ),
         )
 
         self.to(self.device, self.dtype)
