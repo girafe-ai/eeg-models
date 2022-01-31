@@ -6,10 +6,10 @@ from mne.datasets.utils import _get_path
 from mne.utils import _url_to_local_path, verbose
 from pooch import file_hash, retrieve
 
-from eeg_models.types import Any
+from eeg_models.types import Any, Directory, Optional
 
 
-def get_dataset_path(sign, path):
+def get_dataset_path(sign: str, path: Optional[Directory]) -> Optional[Directory]:
     sign = sign.upper()
     key = "MNE_DATASETS_{:s}_PATH".format(sign)
     if get_config(key) is None:
@@ -30,7 +30,14 @@ def get_dataset_path(sign, path):
 
 
 @verbose
-def data_path(url, sign, path=None, force_update=False, update_path=True, verbose=None):
+def data_path(
+    url: str,
+    sign: str,
+    path: Optional[Directory] = None,
+    force_update: bool = False,
+    update_path: bool = True,
+    verbose: bool = None,
+) -> Optional[Directory]:
     path = get_dataset_path(sign, path)
     key_dest = "MNE-{:s}-data".format(sign.lower())
     destination = _url_to_local_path(url, osp.join(path, key_dest))
@@ -44,7 +51,13 @@ def data_path(url, sign, path=None, force_update=False, update_path=True, verbos
 
 
 @verbose
-def data_dl(url, sign, path=None, force_update=False, verbose=None):
+def data_dl(
+    url: str,
+    sign: str,
+    path: Optional[Directory] = None,
+    force_update: bool = False,
+    verbose: bool = None,
+) -> Optional[Directory]:
     path = get_dataset_path(sign, path)
     key_dest = "MNE-{:s}-data".format(sign.lower())
     destination = _url_to_local_path(url, osp.join(path, key_dest))

@@ -6,14 +6,14 @@ from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 class AbstractEegDataset:
     def __init__(
         self,
-        subjects: List = None,
+        subjects: tuple = None,
         root: Optional[Directory] = None,
         split: str = "train",
         transforms: Optional[Callable] = None,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
-    ):
+    ) -> None:
         try:
             _ = iter(subjects)
         except TypeError:
@@ -29,12 +29,12 @@ class AbstractEegDataset:
         if download:
             self.download()
 
-    def get_data(self, subjects=None):
+    def get_data(self, subjects: tuple = None) -> Any:
         if subjects is None:
             subjects = self.subject_list
 
-        if not isinstance(subjects, list):
-            raise (ValueError("subjects must be a list"))
+        if not isinstance(subjects, tuple):
+            raise (ValueError("subjects must be a tuple"))
 
         data = dict()
         for subject in subjects:
@@ -46,13 +46,13 @@ class AbstractEegDataset:
 
     def download(
         self,
-        subject_list=None,
-        path=None,
-        force_update=False,
-        update_path=None,
-        accept=False,
-        verbose=None,
-    ):
+        subject_list: tuple = None,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        accept: bool = False,
+        verbose: bool = None,
+    ) -> None:
 
         if subject_list is None:
             subject_list = self.subject_list
@@ -76,12 +76,17 @@ class AbstractEegDataset:
                     verbose=verbose,
                 )
 
-    def _get_single_subject_data(self, subject):
+    def _get_single_subject_data(self, subject: int) -> Any:
         pass
 
     def data_path(
-        self, subject, path=None, force_update=False, update_path=None, verbose=None
-    ):
+        self,
+        subject: int,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> Optional[Directory]:
         pass
 
     def __len__(self) -> int:

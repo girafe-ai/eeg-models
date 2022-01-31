@@ -21,11 +21,11 @@ class BrainInvadersDataset(AbstractEegDataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
-        NonAdaptive=True,
-        Adaptive=True,
-        Training=True,
-        Online=True,
-    ):
+        NonAdaptive: bool = True,
+        Adaptive: bool = True,
+        Training: bool = True,
+        Online: bool = True,
+    ) -> None:
 
         self.subjects = list(range(1, 24 + 1))
         self.adaptive = Adaptive
@@ -48,7 +48,7 @@ class BrainInvadersDataset(AbstractEegDataset):
                 markers.append(r_data[-1])
             self._data.append((eegs, markers))
 
-    def _get_single_subject_data(self, subject):
+    def _get_single_subject_data(self, subject: int) -> Any:
         """return data for a single subject"""
 
         file_path_list = self.data_path(subject)
@@ -74,8 +74,13 @@ class BrainInvadersDataset(AbstractEegDataset):
         return sessions
 
     def data_path(
-        self, subject, path=None, force_update=False, update_path=None, verbose=None
-    ):
+        self,
+        subject: int,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> Optional[Directory]:
         if subject not in self.subject_list:
             raise (ValueError("Invalid subject number"))
 
