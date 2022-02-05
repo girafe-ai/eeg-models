@@ -29,7 +29,7 @@ class AbstractEegDataset:
         if download:
             self.download()
 
-    def get_data(self, subjects=None):
+    def get_data(self, subjects: tuple = None) -> Any:
         data = []
 
         if subjects is None:
@@ -46,7 +46,13 @@ class AbstractEegDataset:
 
         return data
 
-    def download(self, path=None, force_update=False, update_path=None, verbose=None):
+    def download(
+        self,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> None:
         for subject in self.subject_list:
             self.data_path(
                 subject=subject,
@@ -56,12 +62,17 @@ class AbstractEegDataset:
                 verbose=verbose,
             )
 
-    def _get_single_subject_data(self, subject):
+    def _get_single_subject_data(self, subject: int) -> Any:
         pass
 
     def data_path(
-        self, subject, path=None, force_update=False, update_path=None, verbose=None
-    ):
+        self,
+        subject: int,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> Optional[Directory]:
         pass
 
     def __len__(self) -> int:

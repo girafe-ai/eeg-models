@@ -38,16 +38,16 @@ class BrainInvadersDataset(AbstractEegDataset):
 
         self.m_data = self.get_data()
 
-        self._data = []
+        self.raw_dataset = []
         for _, sessions in sorted(self.m_data.items()):
             eegs, markers = [], []
             for _, run in sorted(sessions["session_1"].items()):
                 r_data = run.get_data()
                 eegs.append(r_data[:-1])
                 markers.append(r_data[-1])
-            self._data.append((eegs, markers))
+            self.raw_dataset.append((eegs, markers))
 
-    def _get_single_subject_data(self, subject):
+    def _get_single_subject_data(self, subject: int) -> Any:
         """return data for a single subject"""
 
         file_path_list = self.data_path(subject)
@@ -73,8 +73,13 @@ class BrainInvadersDataset(AbstractEegDataset):
         return sessions
 
     def data_path(
-        self, subject, path=None, force_update=False, update_path=None, verbose=None
-    ):
+        self,
+        subject: int,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> Optional[Directory]:
 
         if subject not in self.subject_list:
             raise (ValueError("Invalid subject number"))
@@ -117,14 +122,14 @@ class BrainInvadersDataset(AbstractEegDataset):
                 os.path.join(
                     path_folder, "subject{:d}".format(subject), "Session*", filename
                 )
-            )  # noqa
+            )
         return subject_paths
 
     def __len__(self) -> int:
-        return len(self._data)
+        return len(self.raw_dataset)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        return {"eegs": self._data[index][0], "markers": self._data[index][1]}
+        return {"eegs": self.raw_dataset[index][0], "markers": self.raw_dataset[index][1]}
 
     @property
     def channels(self) -> List[str]:
