@@ -4,7 +4,7 @@ from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 class AbstractEegDataset:
     def __init__(
         self,
-        subjects: list = None,
+        subjects: tuple = None,
         root: Optional[Directory] = None,
         split: str = "train",
         transforms: Optional[Callable] = None,
@@ -15,7 +15,9 @@ class AbstractEegDataset:
         try:
             _ = iter(subjects)
         except TypeError:
-            raise ValueError("subjects must be a iterable, like a list") from None
+            raise ValueError(
+                "subjects must be a iterable, like a list or tuple"
+            ) from None
 
         self.subject_list = subjects
         self.root = root
@@ -33,8 +35,8 @@ class AbstractEegDataset:
         if subjects is None:
             subjects = self.subject_list
 
-        if not isinstance(subjects, list):
-            raise (ValueError("subjects must be a list"))
+        if not isinstance(subjects, tuple):
+            raise (ValueError("subjects must be a tuple"))
 
         data = dict()
         for subject in subjects:
