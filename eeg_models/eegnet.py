@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 from _types import Device, Optional
@@ -48,7 +47,7 @@ class EegNet(nn.Sequential):
         rate_drops = (4, 8)
 
         super().__init__(
-            nn.Unflatten(0, (1, 1, n_channels)),
+            nn.Unflatten(1, (1, n_channels)),
             # block 1
             nn.Conv2d(1, f1, (1, kernel), padding="same", bias=False),
             nn.BatchNorm2d(f1),
@@ -72,7 +71,9 @@ class EegNet(nn.Sequential):
             nn.AvgPool2d((1, rate_drops[1])),
             nn.Dropout(dropout_rate),
             nn.Flatten(),
-            nn.Linear(f2 * (n_samples // torch.prod(rate_drops)), n_classes),
+            nn.Linear(
+                f2 * (n_samples // (rate_drops[0] * rate_drops[1])), n_classes, False
+            ),
         )
 
         self.to(self.device, self.dtype)
