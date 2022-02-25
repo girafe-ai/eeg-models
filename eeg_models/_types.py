@@ -5,7 +5,12 @@ import numpy as np
 import torch
 
 
+Any = Any
+Callable = Callable
+Device = torch.device
+Dict = Dict
 Directory = Path
 File = Path
+List = List
 npArray = NewType("nupmy array", np.ndarray)
-Device = torch.device
+Optional = Optional

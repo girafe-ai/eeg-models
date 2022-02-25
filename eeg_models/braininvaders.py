@@ -5,9 +5,9 @@ import zipfile
 import mne
 import yaml
 
-from eeg_models.abstract import AbstractEegDataset
-from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
-from eeg_models.utils import dt_path
+from _types import Any, Callable, Dict, Directory, List, Optional
+from abstract import AbstractEegDataset
+from utils import dt_path
 
 
 class BrainInvadersDataset(AbstractEegDataset):

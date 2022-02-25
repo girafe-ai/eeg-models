@@ -1,4 +1,4 @@
-from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
+from _types import Any, Callable, Dict, Directory, List, Optional
 
 
 class AbstractEegDataset:

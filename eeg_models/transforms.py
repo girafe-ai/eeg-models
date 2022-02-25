@@ -2,7 +2,7 @@ import numpy as np
 from scipy import signal
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from eeg_models.types import List, Optional, npArray
+from _types import List, Optional, npArray
 
 
 class Transform(BaseEstimator, TransformerMixin):
