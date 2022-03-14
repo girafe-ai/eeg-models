@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from _types import Device, Optional
+from eeg_models.types import Device, Optional
 
 
 class EegNet(nn.Sequential):

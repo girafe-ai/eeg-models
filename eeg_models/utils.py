@@ -4,7 +4,7 @@ from os import path as op
 from mne.datasets.utils import _do_path_update, _get_path
 from mne.utils import _fetch_file, _url_to_local_path, verbose
 
-from _types import Any, Directory, Optional
+from eeg_models.types import Any, Directory, Optional
 
 
 @verbose

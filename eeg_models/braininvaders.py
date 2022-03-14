@@ -5,8 +5,8 @@ import zipfile
 import mne
 import yaml
 
-from _types import Any, Callable, Dict, Directory, List, Optional
 from abstract import AbstractEegDataset
+from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 from utils import dt_path
 
 
