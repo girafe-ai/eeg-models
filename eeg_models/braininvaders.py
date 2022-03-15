@@ -47,6 +47,23 @@ class BrainInvadersDataset(AbstractEegDataset):
                 markers.append(r_data[-1])
             self.raw_dataset.append((eegs, markers))
 
+    def get_data(self, subjects: tuple = None) -> Any:
+        data = []
+
+        if subjects is None:
+            subjects = self.subject_list
+
+        if not isinstance(subjects, tuple):
+            raise (ValueError("subjects must be a tuple"))
+
+        data = dict()
+        for subject in subjects:
+            if subject not in self.subject_list:
+                raise ValueError("Invalid subject {:d} given".format(subject))
+            data[subject] = self._get_single_subject_data(subject)
+
+        return data
+
     def _get_single_subject_data(self, subject: int) -> Any:
         """return data for a single subject"""
 
@@ -134,3 +151,19 @@ class BrainInvadersDataset(AbstractEegDataset):
     @property
     def channels(self) -> List[str]:
         return self.m_data[1]["session_1"]["run_1"].ch_names[:-1]
+
+    def download(
+        self,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> None:
+        for subject in self.subject_list:
+            self.data_path(
+                subject=subject,
+                path=path,
+                force_update=force_update,
+                update_path=update_path,
+                verbose=verbose,
+            )
