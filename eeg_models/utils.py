@@ -1,36 +1,14 @@
 import os
-import os.path as osp
+from os import path as op
 
-from mne import get_config, set_config
-from mne.datasets.utils import _get_path
-from mne.utils import _url_to_local_path, verbose
-from pooch import file_hash, retrieve
+from mne.datasets.utils import _do_path_update, _get_path
+from mne.utils import _fetch_file, _url_to_local_path, verbose
 
 from eeg_models.types import Any, Directory, Optional
 
 
-def get_dataset_path(sign: str, path: Optional[Directory]) -> Optional[Directory]:
-    sign = sign.upper()
-    key = "MNE_DATASETS_{:s}_PATH".format(sign)
-    if get_config(key) is None:
-        if get_config("MNE_DATA") is None:
-            path_def = osp.join(osp.expanduser("~"), "mne_data")
-            print(
-                "MNE_DATA is not already configured. It will be set to "
-                "default location in the home directory - "
-                + path_def
-                + "\nAll datasets will be downloaded to this location, if anything is "
-                "already downloaded, please move manually to this location"
-            )
-            if not osp.isdir(path_def):
-                os.makedirs(path_def)
-            set_config("MNE_DATA", osp.join(osp.expanduser("~"), "mne_data"))
-        set_config(key, get_config("MNE_DATA"))
-    return _get_path(path, key, sign)
-
-
 @verbose
-def data_path(
+def dt_path(
     url: str,
     sign: str,
     path: Optional[Directory] = None,
@@ -38,42 +16,20 @@ def data_path(
     update_path: bool = True,
     verbose: bool = None,
 ) -> Optional[Directory]:
-    path = get_dataset_path(sign, path)
+    sign = sign.upper()
+    key = "MNE_DATASETS_{:s}_PATH".format(sign)
     key_dest = "MNE-{:s}-data".format(sign.lower())
-    destination = _url_to_local_path(url, osp.join(path, key_dest))
-    if not osp.isfile(destination) or force_update:
-        if osp.isfile(destination):
+    path = _get_path(path, key, sign)
+    destination = _url_to_local_path(url, op.join(path, key_dest))
+    if not op.isfile(destination) or force_update:
+        if op.isfile(destination):
             os.remove(destination)
-        if not osp.isdir(osp.dirname(destination)):
-            os.makedirs(osp.dirname(destination))
-        retrieve(url, None, path=destination)
+        if not op.isdir(op.dirname(destination)):
+            os.makedirs(op.dirname(destination))
+        _fetch_file(url, destination, print_destination=False)
+
+    _do_path_update(path, update_path, key, sign)
     return destination
-
-
-@verbose
-def data_dl(
-    url: str,
-    sign: str,
-    path: Optional[Directory] = None,
-    force_update: bool = False,
-    verbose: bool = None,
-) -> Optional[Directory]:
-    path = get_dataset_path(sign, path)
-    key_dest = "MNE-{:s}-data".format(sign.lower())
-    destination = _url_to_local_path(url, osp.join(path, key_dest))
-
-    if not osp.isfile(destination) or force_update:
-        if osp.isfile(destination):
-            os.remove(destination)
-        if not osp.isdir(osp.dirname(destination)):
-            os.makedirs(osp.dirname(destination))
-        known_hash = None
-    else:
-        known_hash = file_hash(destination)
-    dlpath = retrieve(
-        url, known_hash, fname=osp.basename(url), path=osp.dirname(destination)
-    )
-    return dlpath
 
 
 def n_parameters(model: Any) -> int:

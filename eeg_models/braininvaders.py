@@ -4,11 +4,10 @@ import zipfile
 
 import mne
 import yaml
-from mne.channels import make_standard_montage
 
-from eeg_models.abstract import AbstractEegDataset
+from abstract import AbstractEegDataset
 from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
-from eeg_models.utils import data_dl
+from utils import dt_path
 
 
 class BrainInvadersDataset(AbstractEegDataset):
@@ -27,7 +26,7 @@ class BrainInvadersDataset(AbstractEegDataset):
         Online: bool = True,
     ) -> None:
 
-        self.subjects = list(range(1, 24 + 1))
+        self.subjects = subjects
         self.adaptive = Adaptive
         self.nonadaptive = NonAdaptive
         self.training = Training
@@ -39,14 +38,31 @@ class BrainInvadersDataset(AbstractEegDataset):
 
         self.m_data = self.get_data()
 
-        self._data = []
+        self.raw_dataset = []
         for _, sessions in sorted(self.m_data.items()):
             eegs, markers = [], []
             for _, run in sorted(sessions["session_1"].items()):
                 r_data = run.get_data()
                 eegs.append(r_data[:-1])
                 markers.append(r_data[-1])
-            self._data.append((eegs, markers))
+            self.raw_dataset.append((eegs, markers))
+
+    def get_data(self, subjects: tuple = None) -> Any:
+        data = []
+
+        if subjects is None:
+            subjects = self.subject_list
+
+        if not isinstance(subjects, tuple):
+            raise (ValueError("subjects must be a tuple"))
+
+        data = dict()
+        for subject in subjects:
+            if subject not in self.subject_list:
+                raise ValueError("Invalid subject {:d} given".format(subject))
+            data[subject] = self._get_single_subject_data(subject)
+
+        return data
 
     def _get_single_subject_data(self, subject: int) -> Any:
         """return data for a single subject"""
@@ -65,9 +81,9 @@ class BrainInvadersDataset(AbstractEegDataset):
             run_number = run_number.split(".gdf")[0]
             run_name = "run_" + run_number
 
-            raw_original = mne.io.read_raw_gdf(file_path, preload=True)
-            raw_original.rename_channels({"FP1": "Fp1", "FP2": "Fp2"})
-            raw_original.set_montage(make_standard_montage("standard_1020"))
+            raw_original = mne.io.read_raw_edf(
+                file_path, montage="standard_1020", preload=True
+            )
 
             sessions[session_name][run_name] = raw_original
 
@@ -81,13 +97,14 @@ class BrainInvadersDataset(AbstractEegDataset):
         update_path: bool = None,
         verbose: bool = None,
     ) -> Optional[Directory]:
+
         if subject not in self.subject_list:
             raise (ValueError("Invalid subject number"))
 
         url = "{:s}subject{:d}.zip".format(
             "https://zenodo.org/record/1494240/files/", subject
         )
-        path_zip = data_dl(url, "BRAININVADERS")
+        path_zip = dt_path(url, "BRAININVADERS")
         path_folder = path_zip.strip("subject{:d}.zip".format(subject))
 
         if not (os.path.isdir(path_folder + "subject{:d}".format(subject))):
@@ -98,7 +115,7 @@ class BrainInvadersDataset(AbstractEegDataset):
         meta_file = os.path.join("subject{:d}".format(subject), "meta.yml")
         meta_path = path_folder + meta_file
         with open(meta_path, "r") as stream:
-            meta = yaml.load(stream, Loader=yaml.FullLoader)
+            meta = yaml.load(stream)
         conditions = []
         if self.adaptive:
             conditions = conditions + ["adaptive"]
@@ -126,11 +143,27 @@ class BrainInvadersDataset(AbstractEegDataset):
         return subject_paths
 
     def __len__(self) -> int:
-        return len(self._data)
+        return len(self.raw_dataset)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        return {"eegs": self._data[index][0], "markers": self._data[index][1]}
+        return {"eegs": self.raw_dataset[index][0], "markers": self.raw_dataset[index][1]}
 
     @property
     def channels(self) -> List[str]:
         return self.m_data[1]["session_1"]["run_1"].ch_names[:-1]
+
+    def download(
+        self,
+        path: Optional[Directory] = None,
+        force_update: bool = False,
+        update_path: bool = None,
+        verbose: bool = None,
+    ) -> None:
+        for subject in self.subject_list:
+            self.data_path(
+                subject=subject,
+                path=path,
+                force_update=force_update,
+                update_path=update_path,
+                verbose=verbose,
+            )
