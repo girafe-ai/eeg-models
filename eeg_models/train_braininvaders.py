@@ -96,6 +96,14 @@ def train(epochs, model, criterion, trainloader, optimizer) -> None:
     print("Finished Training")
 
 
+train(
+    epochs=8,
+    model=model,
+    criterion=criterion,
+    trainloader=trainloader,
+    optimizer=optimizer,
+)
+
 PATH = "./eeg.pth"
 torch.save(model.state_dict(), PATH)
 
@@ -115,3 +123,6 @@ def test(model, testloader):
             correct += (predicted == labels).sum().item()
 
     print(f"Accuracy of the network on the 10000 test images: {100 * correct // total} %")
+
+
+test(model=model, testloader=testloader)
