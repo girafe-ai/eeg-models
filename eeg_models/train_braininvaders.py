@@ -13,7 +13,7 @@ from eegnet import EegNet
 
 
 def main():
-    """prepare dataset and dataloaders"""
+    """Prepare dataset and dataloaders"""
     raw_dataset = BrainInvadersDataset().data
 
     sampling_rate = 512
