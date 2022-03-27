@@ -1,4 +1,5 @@
 from moabb.datasets import bi2013a
+from moabb.datasets import DemonsP300
 
 from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 
