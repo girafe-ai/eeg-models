@@ -82,6 +82,12 @@ class BrainInvadersDataset(AbstractEegDataset):
 
 
 
+''' Dataset for Demons
+
+# from moabb.datasets import DemonsP300
+
+'''
+
 class DemonsP300Dataset(AbstractEegDataset):
     def __init__(
         self,
