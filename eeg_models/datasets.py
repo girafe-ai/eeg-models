@@ -78,3 +78,45 @@ class BrainInvadersDataset(AbstractEegDataset):
 
     def download(self):
         self.m_dataset.download()
+
+
+
+class DemonsP300Dataset(AbstractEegDataset):
+    def __init__(
+        self,
+        root: Optional[Directory] = None,
+        split: str = "train",
+        transforms: Optional[Callable] = None,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+        download: bool = True,
+    ):
+        self.m_dataset = DemonsP300()
+
+        super().__init__(root, split, transforms, transform, target_transform, download)
+
+        self.m_data = self.m_dataset.get_data()
+
+        self.data = []
+        for _, sessions in sorted(self.m_data.items()):
+            eegs, markers = [], []
+            for _, run in sorted(sessions["session_0"].items()):
+                r_data = run.get_data()
+                eegs.append(r_data[:-2])
+                markers.append(r_data[-2:-1])
+            self.data.append((eegs, markers))
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        return {"eegs": self.data[index][0], "markers": self.data[index][1]}
+
+    @property
+    def channels(self) -> List[str]:
+        return self.m_data[1]["session_0"]["run_0"].ch_names[:-2]
+
+    def download(self):
+        self.m_dataset.download()
+
+
