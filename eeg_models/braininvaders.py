@@ -31,21 +31,11 @@ class BrainInvadersDataset(AbstractEegDataset):
         self.non_adaptive = non_adaptive
         self.training = training
         self.online = online
-
         super().__init__(
             subjects, root, split, transforms, transform, target_transform, download
         )
-
-        self.m_data = self.get_data()
-
+        self.m_data = None
         self.raw_dataset = []
-        for _, sessions in sorted(self.m_data.items()):
-            eegs, markers = [], []
-            for _, run in sorted(sessions["session_1"].items()):
-                r_data = run.get_data()
-                eegs.append(r_data[:-1])
-                markers.append(r_data[-1])
-            self.raw_dataset.append((eegs, markers))
 
     def get_data(self, subjects: tuple = None) -> Any:
         data = []
@@ -146,6 +136,14 @@ class BrainInvadersDataset(AbstractEegDataset):
         return len(self.raw_dataset)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
+        self.m_data = self.get_data()
+        for _, sessions in sorted(self.m_data.items()):
+            eegs, markers = [], []
+            for _, run in sorted(sessions["session_1"].items()):
+                r_data = run.get_data()
+                eegs.append(r_data[:-1])
+                markers.append(r_data[-1])
+            self.raw_dataset.append((eegs, markers))
         return {"eegs": self.raw_dataset[index][0], "markers": self.raw_dataset[index][1]}
 
     @property
