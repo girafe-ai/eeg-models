@@ -20,17 +20,17 @@ class BrainInvadersDataset(AbstractEegDataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
-        NonAdaptive: bool = True,
-        Adaptive: bool = True,
-        Training: bool = True,
-        Online: bool = True,
+        non_adaptive: bool = True,
+        adaptive: bool = True,
+        training: bool = True,
+        online: bool = True,
     ) -> None:
 
         self.subjects = subjects
-        self.adaptive = Adaptive
-        self.nonadaptive = NonAdaptive
-        self.training = Training
-        self.online = Online
+        self.adaptive = adaptive
+        self.non_adaptive = non_adaptive
+        self.training = training
+        self.online = online
 
         super().__init__(
             subjects, root, split, transforms, transform, target_transform, download
@@ -119,8 +119,8 @@ class BrainInvadersDataset(AbstractEegDataset):
         conditions = []
         if self.adaptive:
             conditions = conditions + ["adaptive"]
-        if self.nonadaptive:
-            conditions = conditions + ["nonadaptive"]
+        if self.non_adaptive:
+            conditions = conditions + ["non_adaptive"]
         types = []
         if self.training:
             types = types + ["training"]
