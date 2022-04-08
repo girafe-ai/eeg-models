@@ -6,15 +6,12 @@ from eeg_models.types import Device, Optional
 
 class EegNet(nn.Sequential):
     """Pytorch Implementation of EegNet.
-
     This model implementats the original paper "EEGNet: A Compact Convolutional Network
     for EEG-based Brain-Computer Interfaces" which can be found on the https://arxiv.org/abs/1611.08024.
     Authors' original implementation on Tensorflow: https://github.com/vlawhern/arl-eegmodels.
-
     Assumes the input signal is sampled at 128Hz and used 64 channels. If you want to use this model
     for any other sampling rate and channels, you will need to modify the lengths of temporal
     kernels and average pooling size.
-
     Args:
       n_classes: number of classes to classify.
       n_channels: number of channels in the EEG data.
@@ -45,10 +42,10 @@ class EegNet(nn.Sequential):
         kernel = rate // 2
         if f2 is None:
             f2 = d * f1
-        rate_drops = torch.tensor([4, 8])
+        rate_drops = (4, 8)
 
         super().__init__(
-            nn.Unflatten(1, (1, n_channels)),
+            nn.Unflatten(0, (1, 1, n_channels)),
             # block 1
             nn.Conv2d(1, f1, (1, kernel), padding="same", bias=False),
             nn.BatchNorm2d(f1),
