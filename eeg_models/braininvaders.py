@@ -31,9 +31,11 @@ class BrainInvadersDataset(AbstractEegDataset):
         self.non_adaptive = non_adaptive
         self.training = training
         self.online = online
+
         super().__init__(
             subjects, root, split, transforms, transform, target_transform, download
         )
+
         self.m_data = None
         self.raw_dataset = []
 
