@@ -2,19 +2,17 @@ import os
 from os import path as op
 
 from mne.datasets.utils import _do_path_update, _get_path
-from mne.utils import _fetch_file, _url_to_local_path, verbose
+from mne.utils import _fetch_file, _url_to_local_path
 
 from eeg_models.types import Any, Directory, Optional
 
 
-@verbose
 def dt_path(
     url: str,
     sign: str,
     path: Optional[Directory] = None,
     force_update: bool = False,
     update_path: bool = True,
-    verbose: bool = None,
 ) -> Optional[Directory]:
     sign = sign.upper()
     key = "MNE_DATASETS_{:s}_PATH".format(sign)

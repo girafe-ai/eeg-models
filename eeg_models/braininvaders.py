@@ -5,9 +5,41 @@ import zipfile
 import mne
 import yaml
 
-from abstract import AbstractEegDataset
 from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
 from utils import dt_path
+
+
+class AbstractEegDataset:
+    def __init__(
+        self,
+        root: Optional[Directory] = None,
+        split: str = "train",
+        transforms: Optional[Callable] = None,
+        transform: Optional[Callable] = None,
+        target_transform: Optional[Callable] = None,
+        download: bool = True,
+    ):
+        self.root = root
+        self.split = split
+        self.transforms = transforms
+        self.transform = transform
+        self.target_transform = target_transform
+
+        if download:
+            self.download()
+
+    def __len__(self) -> int:
+        raise NotImplementedError()
+
+    def __getitem__(self, index: int) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+    @property
+    def channels(self) -> List[str]:
+        raise NotImplementedError()
+
+    def download(self):
+        raise NotImplementedError()
 
 
 class BrainInvadersDataset(AbstractEegDataset):
@@ -25,28 +57,18 @@ class BrainInvadersDataset(AbstractEegDataset):
         training: bool = True,
         online: bool = True,
     ) -> None:
-
-        self.subjects = subjects
+        self.subject_list = subjects
         self.adaptive = adaptive
         self.non_adaptive = non_adaptive
         self.training = training
         self.online = online
-
-        super().__init__(
-            subjects, root, split, transforms, transform, target_transform, download
-        )
-
-        self.m_data = None
-        self.raw_dataset = []
+        super().__init__(root, split, transforms, transform, target_transform, download)
 
     def get_data(self, subjects: tuple = None) -> Any:
         data = []
 
         if subjects is None:
             subjects = self.subject_list
-
-        if not isinstance(subjects, tuple):
-            raise (ValueError("subjects must be a tuple"))
 
         data = dict()
         for subject in subjects:
@@ -85,9 +107,6 @@ class BrainInvadersDataset(AbstractEegDataset):
         self,
         subject: int,
         path: Optional[Directory] = None,
-        force_update: bool = False,
-        update_path: bool = None,
-        verbose: bool = None,
     ) -> Optional[Directory]:
 
         if subject not in self.subject_list:
@@ -135,35 +154,27 @@ class BrainInvadersDataset(AbstractEegDataset):
         return subject_paths
 
     def __len__(self) -> int:
-        return len(self.raw_dataset)
+        return len(self.subject_list)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        self.m_data = self.get_data()
-        for _, sessions in sorted(self.m_data.items()):
-            eegs, markers = [], []
-            for _, run in sorted(sessions["session_1"].items()):
-                r_data = run.get_data()
-                eegs.append(r_data[:-1])
-                markers.append(r_data[-1])
-            self.raw_dataset.append((eegs, markers))
-        return {"eegs": self.raw_dataset[index][0], "markers": self.raw_dataset[index][1]}
+        sessions = self._get_single_subject_data(index)
+        eegs, markers = [], []
+        for _, run in sorted(sessions["session_1"].items()):
+            r_data = run.get_data()
+            eegs.append(r_data[:-1])
+            markers.append(r_data[-1])
+        return {"eegs": eegs, "markers": markers}
 
     @property
     def channels(self) -> List[str]:
-        return self.m_data[1]["session_1"]["run_1"].ch_names[:-1]
+        return self._get_single_subject_data(1)["session_1"]["run_1"].ch_names[:-1]
 
     def download(
         self,
         path: Optional[Directory] = None,
-        force_update: bool = False,
-        update_path: bool = None,
-        verbose: bool = None,
     ) -> None:
         for subject in self.subject_list:
             self.data_path(
                 subject=subject,
                 path=path,
-                force_update=force_update,
-                update_path=update_path,
-                verbose=verbose,
             )
