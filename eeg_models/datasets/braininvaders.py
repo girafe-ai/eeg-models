@@ -5,7 +5,7 @@ import zipfile
 import mne
 import yaml
 
-from eeg_models.types import Any, Callable, Dict, Directory, List, Optional
+from somepytools.typing import Any, Callable, Dict, Directory, List, Optional
 from utils import dt_path
 
 
