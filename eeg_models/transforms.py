@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import signal
 from sklearn.base import BaseEstimator, TransformerMixin
-
-from eeg_models.types import List, Optional, npArray
+from somepytools.typing import Array, List, Optional
 
 
 class Transform(BaseEstimator, TransformerMixin):
@@ -11,7 +10,7 @@ class Transform(BaseEstimator, TransformerMixin):
     Providing dummy implementation of the methods expected by sklearn
     """
 
-    def fit(self, batch: npArray, labels: Optional[npArray] = None):
+    def fit(self, batch: Array, labels: Optional[Array] = None):
         return self
 
 
@@ -29,7 +28,7 @@ class ButterFilter(Transform):
         )
         self.filter = signal.butter(self.order, normal_cutoff, btype="bandpass")
 
-    def transform(self, batch: npArray) -> List[npArray]:
+    def transform(self, batch: Array) -> List[Array]:
         out = np.empty_like(batch)
         out[:] = [signal.filtfilt(*self.filter, item) for item in batch]
         return out
@@ -46,7 +45,7 @@ class Decimator(Transform):
         """
         self.factor = factor
 
-    def transform(self, batch: npArray) -> List[npArray]:
+    def transform(self, batch: Array) -> List[Array]:
         """
         Args:
             batch: iterable of np.ndarrays
@@ -72,7 +71,7 @@ class ChannellwiseScaler(Transform):
         """
         self.scaler = scaler
 
-    def fit(self, batch: npArray, labels: Optional[npArray] = None):
+    def fit(self, batch: Array, labels: Optional[Array] = None):
         """
         Args:
             batch: array of eegs, that is every element of x is (n_channels, n_ticks)
@@ -82,7 +81,7 @@ class ChannellwiseScaler(Transform):
             self.scaler.partial_fit(signals.T)
         return self
 
-    def transform(self, batch: npArray) -> List[npArray]:
+    def transform(self, batch: Array) -> List[Array]:
         """Scales each channel
 
         Args:
@@ -114,7 +113,7 @@ class MarkersTransformer(Transform):
         self.decimation_factor = decimation_factor
         self.empty_label = empty_label
 
-    def transform(self, batch: npArray) -> List[npArray]:
+    def transform(self, batch: Array) -> List[Array]:
         res = []
 
         for markers in batch:
