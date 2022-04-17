@@ -1,5 +1,7 @@
 from somepytools.typing import Any, Callable, Dict, Directory, List, Optional
+
 from .constants import SPLIT_TRAIN
+
 
 class AbstractEegDataset:
     def __init__(
@@ -32,4 +34,3 @@ class AbstractEegDataset:
 
     def download(self):
         raise NotImplementedError()
-

@@ -1,3 +1,3 @@
 SPLIT_TRAIN = "train"
 SPLIT_VAL = "val"
-SPLIT_TEST = 'test'
+SPLIT_TEST = "test"

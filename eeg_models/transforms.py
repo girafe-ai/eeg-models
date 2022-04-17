@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import signal
 from sklearn.base import BaseEstimator, TransformerMixin
-
-from somepytools.typing import List, Optional, Array
+from somepytools.typing import Array, List, Optional
 
 
 class Transform(BaseEstimator, TransformerMixin):
