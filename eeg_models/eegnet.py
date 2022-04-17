@@ -45,10 +45,10 @@ class EegNet(nn.Sequential):
         kernel = rate // 2
         if f2 is None:
             f2 = d * f1
-        rate_drops = (4, 8)
+        rate_drops = torch.tensor([4, 8])
 
         super().__init__(
-            nn.Unflatten(0, (1, 1, n_channels)),
+            nn.Unflatten(1, (1, n_channels)),
             # block 1
             nn.Conv2d(1, f1, (1, kernel), padding="same", bias=False),
             nn.BatchNorm2d(f1),
