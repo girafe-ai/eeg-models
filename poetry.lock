@@ -446,6 +446,17 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
+name = "somepytools"
+version = "1.2.0"
+description = "Just some useful Python tools"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+all = ["PyYAML (>=6.0,<7.0)", "toml (>=0.10.2,<0.11.0)", "numpy (>=1.22.3,<2.0.0)", "opencv-python-headless (>=4.5.5,<5.0.0)", "torch (>=1.11.0,<2.0.0)", "matplotlib (>=3.5.1,<4.0.0)"]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.0.0"
 description = "threadpoolctl"
@@ -523,7 +534,7 @@ testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "fb6e11901f8a284efd3c5b4a1d2695a2396998b8fe39cbbdcba66eb6593ed5db"
+content-hash = "20da8ba3219b01824ae588a66af9b7b5a43c73a1ea29dd6eeeb55fba0eceac9c"
 
 [metadata.files]
 appdirs = [
@@ -936,6 +947,7 @@ scikit-learn = [
     {file = "scikit_learn-1.0.1-cp39-cp39-win_amd64.whl", hash = "sha256:c604a813df8e7d6dfca3ae0db0a8fd7e5dff4ea9d94081ab263c81bf0b61ab4b"},
 ]
 scipy = [
+    {file = "scipy-1.7.2-1-cp310-cp310-win_amd64.whl", hash = "sha256:dc2d1bf41294e63c7302bf499973ac0c7f73c93c01763db43055f6525234bf11"},
     {file = "scipy-1.7.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:97eb573e361a73a553b915dc195c6f72a08249964b1a33f157f9659f3b6210d1"},
     {file = "scipy-1.7.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:359b60a0cccd17723b9d5e329a5212a710e771a3ddde800e472fb93732756c46"},
     {file = "scipy-1.7.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:82c5befebf54d799d77e5f0205c03030f57f69ba2541baa44d2e6ad138c28cd3"},
@@ -971,6 +983,10 @@ setuptools-scm = [
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
+]
+somepytools = [
+    {file = "somepytools-1.2.0-py3-none-any.whl", hash = "sha256:a77fa855f94ddcc01a68725510bc3436c35a6cfbbf8c57604c18793f42d9365d"},
+    {file = "somepytools-1.2.0.tar.gz", hash = "sha256:7be1c58ed74e87e675f8d233ab4b189146185e4757e6005ad75260805d4d3d4a"},
 ]
 threadpoolctl = [
     {file = "threadpoolctl-3.0.0-py3-none-any.whl", hash = "sha256:4fade5b3b48ae4b1c30f200b28f39180371104fccc642e039e0f2435ec8cc211"},
