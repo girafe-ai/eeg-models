@@ -9,24 +9,23 @@ from urllib import parse, request
 import h5py
 import numpy as np
 from pooch import file_hash, retrieve
+from somepytools.typing import Directory
 
 from .abstract import AbstractEegDataset
-
-
-Directory = Path
+from .constants import SPLIT_TRAIN
 
 
 class DemonsP300Dataset(AbstractEegDataset):
     def __init__(
         self,
         root: Optional[Directory] = None,
-        split: str = "train",
+        split: str = SPLIT_TRAIN,
         transforms: Optional[Callable] = None,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
     ):
-        self.ch_names = ["Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2"]
+        self.ch_names = ("Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2")
         self.sampling_rate = 500.0
         self.url = "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
 
@@ -172,7 +171,6 @@ class DemonsP300Dataset(AbstractEegDataset):
         accept=False,
         verbose=None,
     ):
-
         if subject_list is None:
             subject_list = self.subject_list
         for subject in subject_list:
