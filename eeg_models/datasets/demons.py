@@ -1,16 +1,17 @@
-import zipfile
-from pathlib import Path
-import h5py
 import os
-import glob
-from inspect import signature
 import os.path as osp
-from pooch import file_hash, retrieve
-from urllib import parse, request 
+import zipfile
+from inspect import signature
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib import parse, request
+
+import h5py
 import numpy as np
+from pooch import file_hash, retrieve
 
 from .abstract import AbstractEegDataset
+
 
 Directory = Path
 
@@ -24,7 +25,7 @@ class DemonsP300Dataset(AbstractEegDataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
-    ): 
+    ):
         self.ch_names = ["Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2"]
         self.sampling_rate = 500.0
         self.url = "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
@@ -42,7 +43,7 @@ class DemonsP300Dataset(AbstractEegDataset):
                 ("sessions", np.object),  # list of `_session_dtype`
             ]
         )
-        
+
         self._session_dtype = np.dtype(
             [
                 ("eeg", np.object),
@@ -50,13 +51,12 @@ class DemonsP300Dataset(AbstractEegDataset):
                 ("stimuli", np.object),
             ]
         )
-       
-        self.subject_list = list(range(60))  
+
+        self.subject_list = list(range(60))
         self.path = None
         self.subjects_filenames = None
 
         super().__init__(root, split, transforms, transform, target_transform, download)
-
 
     @staticmethod
     def _strip(session) -> tuple:
@@ -69,7 +69,6 @@ class DemonsP300Dataset(AbstractEegDataset):
         if ind == 0:
             ind = None
         return tuple((eeg[:, :ind], *rest))
-    
 
     def read_hdf(self, filename) -> np.ndarray:
         """Reads data from HDF file
@@ -86,15 +85,14 @@ class DemonsP300Dataset(AbstractEegDataset):
                 for name, value in act.attrs.items():
                     record[i][name] = value
         return record
-    
 
     def _get_single_subject_data(self, subject: int):
         record = self.read_hdf(self.data_path(subject))
-        runs_raw = {}  
+        runs_raw = {}
         for i, act in enumerate(record):
             # target and stims are increased by 1
             # because the channel is filled with zeros by default
-            target = act["target"] + 1  
+            target = act["target"] + 1
             run_data = []
             for eeg, starts, stims in act["sessions"]:
                 starts = starts * self.sampling_rate / self._ms_in_sec
@@ -113,9 +111,8 @@ class DemonsP300Dataset(AbstractEegDataset):
                 run_data.append(round_data)
 
             raw = np.hstack(run_data)
-            runs_raw[f"run_{i}"] = raw    
-        return {"session_0": runs_raw}    
-        
+            runs_raw[f"run_{i}"] = raw
+        return {"session_0": runs_raw}
 
     def data_dl(self, url, sign, path=None, force_update=False, verbose=None):
         path = osp.join(osp.expanduser("~"), "mne_data")
@@ -123,11 +120,13 @@ class DemonsP300Dataset(AbstractEegDataset):
             os.makedirs(path)
 
         key_dest = "MNE-{:s}-data".format(sign.lower())
-        
+
         destination = parse.urlparse(url).path
-        if len(destination) < 2 or destination[0] != '/':
+        if len(destination) < 2 or destination[0] != "/":
             raise ValueError("Invalid URL")
-        destination = os.path.join(osp.join(path, key_dest), request.url2pathname(destination)[1:])
+        destination = os.path.join(
+            osp.join(path, key_dest), request.url2pathname(destination)[1:]
+        )
 
         # Fetch the file
         if not osp.isfile(destination) or force_update:
@@ -146,8 +145,7 @@ class DemonsP300Dataset(AbstractEegDataset):
             progressbar=True,
         )
         return dlpath
-    
-    
+
     def data_path(
         self, subject: int, path=None, force_update=False, update_path=None, verbose=None
     ):
@@ -165,7 +163,6 @@ class DemonsP300Dataset(AbstractEegDataset):
 
         return self.subjects_filenames[subject].as_posix()
 
-
     def download(
         self,
         subject_list=None,
@@ -174,7 +171,7 @@ class DemonsP300Dataset(AbstractEegDataset):
         update_path=None,
         accept=False,
         verbose=None,
-        ):
+    ):
 
         if subject_list is None:
             subject_list = self.subject_list
@@ -198,23 +195,24 @@ class DemonsP300Dataset(AbstractEegDataset):
                     update_path=update_path,
                     verbose=verbose,
                 )
-    
 
     @property
     def channels(self) -> List[str]:
         return self.ch_names
 
-
     def __len__(self) -> int:
         return len(self.subject_list)
-
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         data = self._get_single_subject_data(index)
         data_tab = []
         for i in range(len(data)):
-            #runs_raw[f"run_{i}"] = raw 
+            # runs_raw[f"run_{i}"] = raw
             for j in range(len(data[f"session_{i}"])):
                 data_tab.append(data[f"session_{i}"][f"run_{j}"])
         data_tab = np.hstack(data_tab)
-        return {"eegs": data_tab[0:8], "stims_channel": data_tab[8], "target_channel": data_tab[9]}
+        return {
+            "eegs": data_tab[0:8],
+            "stims_channel": data_tab[8],
+            "target_channel": data_tab[9],
+        }
