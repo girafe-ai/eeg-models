@@ -14,6 +14,10 @@ from somepytools.typing import Directory
 from .abstract import AbstractEegDataset
 from .constants import SPLIT_TRAIN
 
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+from ..transforms import ButterFilter, Decimator, ChannellwiseScaler, MarkersTransformer
 
 class DemonsP300Dataset(AbstractEegDataset):
     def __init__(
@@ -203,14 +207,54 @@ class DemonsP300Dataset(AbstractEegDataset):
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         data = self._get_single_subject_data(index)
-        data_tab = []
+        
+        
+        # data_tab = []
+        # for i in range(len(data)):
+        #     # runs_raw[f"run_{i}"] = raw
+        #     for j in range(len(data[f"session_{i}"])):
+        #         data_tab.append(data[f"session_{i}"][f"run_{j}"])
+        # data_tab = np.hstack(data_tab)
+        # return {
+        #     "eegs": data_tab[0:8],
+        #     "stims_channel": data_tab[8],
+        #     "target_channel": data_tab[9],
+        # }
+
+        data_tab_max = []
+        data_tab_min = []
+
+        
         for i in range(len(data)):
-            # runs_raw[f"run_{i}"] = raw
+            l_max = max([  data[f"session_{i}"][f"run_{j}"].shape[1] for j in range(len(data[f"session_{i}"]))])
+            l_min = min([  data[f"session_{i}"][f"run_{j}"].shape[1] for j in range(len(data[f"session_{i}"]))])
+            
             for j in range(len(data[f"session_{i}"])):
-                data_tab.append(data[f"session_{i}"][f"run_{j}"])
-        data_tab = np.hstack(data_tab)
-        return {
-            "eegs": data_tab[0:8],
-            "stims_channel": data_tab[8],
-            "target_channel": data_tab[9],
-        }
+                L = l_max - data[f"session_{i}"][f"run_{j}"].shape[1]
+                new_run = np.pad(data[f"session_{i}"][f"run_{j}"], ((0,0),(0,L)), mode ='constant', constant_values=((0,0),(0,0)))
+                
+                data_tab_max.append(new_run)
+                data_tab_min.append(data[f"session_{i}"][f"run_{j}"][:, :l_min])
+
+        data_tab_max = np.stack(data_tab_max)     #  ( ndarray : #_runs, #_channels, #_timestamped_data)
+        data_tab_min = np.stack(data_tab_min)     #  ( ndarray : #_runs, #_channels, #_timestamped_data)
+        
+
+        # Transforms : 
+        sampling_rate = 512
+        decimation_factor = 1
+
+        for i in range(len(data_tab_max)):
+            eeg_pipe = make_pipeline(
+                #transforms.Decimator(decimation_factor),
+                ButterFilter(sampling_rate // decimation_factor, 4, 0.5, 20),
+                ChannellwiseScaler(StandardScaler()),
+                )
+            eegs = data_tab_max[i][0:8]
+            eeg_pipe.fit(eegs)
+            data_tab_max[i][0:8] = eeg_pipe.transform(eegs)
+
+
+        return data_tab_max    #  ( ndarray : #_runs, #_channels, #_timestamped_data)
+
+
