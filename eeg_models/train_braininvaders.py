@@ -14,7 +14,7 @@ from eegnet import EegNet
 
 def main():
     """Prepare dataset and dataloaders"""
-    raw_dataset = BrainInvadersDataset().data
+    raw_dataset = BrainInvadersDataset()
 
     sampling_rate = 512
     decimation_factor = 10
@@ -29,17 +29,17 @@ def main():
     )
     markers_pipe = transforms.MarkersTransformer(labels_mapping, decimation_factor)
 
-    for eegs, _ in raw_dataset:
-        eeg_pipe.fit(eegs)
+    for i in range(1, 1 + raw_dataset.__len__()):
+        eeg_pipe.fit(raw_dataset.__getitem__(i)["eegs"])
 
     dataset = []
     epoch_count = int(epoch_duration * final_rate)
 
-    for eegs, markers in raw_dataset:
+    for i in range(1, 1 + raw_dataset.__len__()):
         epochs = []
         labels = []
-        filtered = eeg_pipe.transform(eegs)  # seconds
-        markups = markers_pipe.transform(markers)
+        filtered = eeg_pipe.transform(raw_dataset.__getitem__(i)["eegs"])  # seconds
+        markups = markers_pipe.transform(raw_dataset.__getitem__(i)["markers"])
         for signal, markup in zip(filtered, markups):
             epochs.extend(
                 [signal[:, start : (start + epoch_count)] for start in markup[:, 0]]
