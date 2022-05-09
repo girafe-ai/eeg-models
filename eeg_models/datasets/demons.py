@@ -3,23 +3,44 @@ import os.path as osp
 import zipfile
 from inspect import signature
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
 from urllib import parse, request
 
 import h5py
 import numpy as np
 from pooch import file_hash, retrieve
-from somepytools.typing import Directory
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from somepytools.typing import Any, Callable, Dict, Directory, File, Optional, Tuple
 
+from ..transforms import ButterFilter, ChannellwiseScaler, Decimator, MarkersTransformer
 from .abstract import AbstractEegDataset
 from .constants import SPLIT_TRAIN
 
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-
-from ..transforms import ButterFilter, Decimator, ChannellwiseScaler, MarkersTransformer
 
 class DemonsP300Dataset(AbstractEegDataset):
+    url = "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
+
+    _ms_in_sec = 1000
+    _hdf_path = "p300dataset"
+    _ds_folder_name = "demons"
+
+    _act_dtype = np.dtype(
+        [
+            ("id", np.int),
+            ("target", np.int),
+            ("is_train", np.bool),
+            ("prediction", np.int),
+            ("sessions", np.object),  # list of `_session_dtype`
+        ]
+    )
+    _session_dtype = np.dtype(
+        [
+            ("eeg", np.object),
+            ("starts", np.object),
+            ("stimuli", np.object),
+        ]
+    )
+
     def __init__(
         self,
         root: Optional[Directory] = None,
@@ -29,37 +50,9 @@ class DemonsP300Dataset(AbstractEegDataset):
         target_transform: Optional[Callable] = None,
         download: bool = True,
     ):
-        self.ch_names = ("Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2")
-        self.sampling_rate = 500.0
-        self.url = "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
-
-        self._ms_in_sec = 1000
-        self._hdf_path = "p300dataset"
-        self._ds_folder_name = "demons"
-
-        self._act_dtype = np.dtype(
-            [
-                ("id", np.int),
-                ("target", np.int),
-                ("is_train", np.bool),
-                ("prediction", np.int),
-                ("sessions", np.object),  # list of `_session_dtype`
-            ]
-        )
-
-        self._session_dtype = np.dtype(
-            [
-                ("eeg", np.object),
-                ("starts", np.object),
-                ("stimuli", np.object),
-            ]
-        )
-
-        self.subject_list = list(range(60))
+        super().__init__(root, split, transforms, transform, target_transform, download)
         self.path = None
         self.subjects_filenames = None
-
-        super().__init__(root, split, transforms, transform, target_transform, download)
 
     @staticmethod
     def _strip(session) -> tuple:
@@ -73,8 +66,9 @@ class DemonsP300Dataset(AbstractEegDataset):
             ind = None
         return tuple((eeg[:, :ind], *rest))
 
-    def read_hdf(self, filename) -> np.ndarray:
+    def read_hdf(self, filename: File) -> np.ndarray:
         """Reads data from HDF file
+
         Returns:
             array of `_act_dtype`
         """
@@ -199,16 +193,19 @@ class DemonsP300Dataset(AbstractEegDataset):
                 )
 
     @property
-    def channels(self) -> List[str]:
-        return self.ch_names
+    def channels(self) -> Tuple[str]:
+        return ("Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2")
+
+    @property
+    def sampling_rate(self) -> float:
+        return 500.0
 
     def __len__(self) -> int:
         return len(self.subject_list)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         data = self._get_single_subject_data(index)
-        
-        
+
         # data_tab = []
         # for i in range(len(data)):
         #     # runs_raw[f"run_{i}"] = raw
@@ -224,37 +221,61 @@ class DemonsP300Dataset(AbstractEegDataset):
         data_tab_max = []
         data_tab_min = []
 
-        
         for i in range(len(data)):
-            l_max = max([  data[f"session_{i}"][f"run_{j}"].shape[1] for j in range(len(data[f"session_{i}"]))])
-            l_min = min([  data[f"session_{i}"][f"run_{j}"].shape[1] for j in range(len(data[f"session_{i}"]))])
-            
+            l_max = max(
+                [
+                    data[f"session_{i}"][f"run_{j}"].shape[1]
+                    for j in range(len(data[f"session_{i}"]))
+                ]
+            )
+            l_min = min(
+                [
+                    data[f"session_{i}"][f"run_{j}"].shape[1]
+                    for j in range(len(data[f"session_{i}"]))
+                ]
+            )
+
             for j in range(len(data[f"session_{i}"])):
                 L = l_max - data[f"session_{i}"][f"run_{j}"].shape[1]
-                new_run = np.pad(data[f"session_{i}"][f"run_{j}"], ((0,0),(0,L)), mode ='constant', constant_values=((0,0),(0,0)))
-                
+                new_run = np.pad(
+                    data[f"session_{i}"][f"run_{j}"],
+                    ((0, 0), (0, L)),
+                    mode="constant",
+                    constant_values=((0, 0), (0, 0)),
+                )
+
                 data_tab_max.append(new_run)
                 data_tab_min.append(data[f"session_{i}"][f"run_{j}"][:, :l_min])
 
-        data_tab_max = np.stack(data_tab_max)     #  ( ndarray : #_runs, #_channels, #_timestamped_data)
-        data_tab_min = np.stack(data_tab_min)     #  ( ndarray : #_runs, #_channels, #_timestamped_data)
-        
+        data_tab_max = np.stack(
+            data_tab_max
+        )  #  ( ndarray : #_runs, #_channels, #_timestamped_data)
+        data_tab_min = np.stack(
+            data_tab_min
+        )  #  ( ndarray : #_runs, #_channels, #_timestamped_data)
 
-        # Transforms : 
+        # Transforms :
         sampling_rate = 512
         decimation_factor = 1
 
         for i in range(len(data_tab_max)):
             eeg_pipe = make_pipeline(
-                #transforms.Decimator(decimation_factor),
+                # transforms.Decimator(decimation_factor),
                 ButterFilter(sampling_rate // decimation_factor, 4, 0.5, 20),
                 ChannellwiseScaler(StandardScaler()),
-                )
+            )
             eegs = data_tab_max[i][0:8]
             eeg_pipe.fit(eegs)
             data_tab_max[i][0:8] = eeg_pipe.transform(eegs)
 
+        return data_tab_max  #  ( ndarray : #_runs, #_channels, #_timestamped_data)
 
-        return data_tab_max    #  ( ndarray : #_runs, #_channels, #_timestamped_data)
-
-
+        data_tab.append(data[f"session_{i}"][f"run_{j}"])
+        data_tab = np.hstack(data_tab)
+        raw_eegs = data_tab[0:8]
+        eegs = self.transform(raw_eegs)
+        return {
+            "eegs": eegs,
+            "stims_channel": data_tab[8],
+            "target_channel": data_tab[9],
+        }
