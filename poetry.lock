@@ -447,7 +447,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "somepytools"
-version = "1.2.0"
+version = "1.2.2"
 description = "Just some useful Python tools"
 category = "main"
 optional = false
@@ -534,7 +534,7 @@ testing = ["coverage (>=4)", "coverage-enable-subprocess (>=1)", "flaky (>=3)", 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "20da8ba3219b01824ae588a66af9b7b5a43c73a1ea29dd6eeeb55fba0eceac9c"
+content-hash = "81c7b6b6af378f60cf0668d56c56fe53f3d4918291c64035e8f63c93230dd2ad"
 
 [metadata.files]
 appdirs = [
@@ -985,8 +985,8 @@ six = [
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
 ]
 somepytools = [
-    {file = "somepytools-1.2.0-py3-none-any.whl", hash = "sha256:a77fa855f94ddcc01a68725510bc3436c35a6cfbbf8c57604c18793f42d9365d"},
-    {file = "somepytools-1.2.0.tar.gz", hash = "sha256:7be1c58ed74e87e675f8d233ab4b189146185e4757e6005ad75260805d4d3d4a"},
+    {file = "somepytools-1.2.2-py3-none-any.whl", hash = "sha256:0c316ad85d794fcf87b3603473ff0fa1682948137a2c523e5dd0f9fef8288b05"},
+    {file = "somepytools-1.2.2.tar.gz", hash = "sha256:3d7aab9e043fb23d1d8875e35f8e3aac1a566d4b8f50e1ece59692c4ff68b2f2"},
 ]
 threadpoolctl = [
     {file = "threadpoolctl-3.0.0-py3-none-any.whl", hash = "sha256:4fade5b3b48ae4b1c30f200b28f39180371104fccc642e039e0f2435ec8cc211"},
