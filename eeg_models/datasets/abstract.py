@@ -1,4 +1,4 @@
-from somepytools.typing import Any, Callable, Dict, Directory, List, Optional
+from somepytools.typing import Any, Callable, Dict, Directory, Optional, Sequence
 
 from .constants import SPLIT_TRAIN
 
@@ -29,7 +29,11 @@ class AbstractEegDataset:
         raise NotImplementedError()
 
     @property
-    def channels(self) -> List[str]:
+    def channels(self) -> Sequence[str]:
+        raise NotImplementedError()
+
+    @property
+    def sampling_rate(self) -> float:
         raise NotImplementedError()
 
     def download(self):
