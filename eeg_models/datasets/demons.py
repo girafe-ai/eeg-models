@@ -1,6 +1,5 @@
 import numpy as np
-from somepytools.general import download_url
-from somepytools.typing import Callable, Directory, Optional, Tuple
+from somepytools.typing import Callable, Dict, Directory, Optional, Sequence, Tuple
 
 from .. import data_dir
 from .abstract import AbstractEegDataset
@@ -8,8 +7,6 @@ from .constants import SPLIT_TRAIN
 
 
 class DemonsP300Dataset(AbstractEegDataset):
-    url = "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
-
     # from somepytools.constants import TIME_CONSTANTS
     _ms_in_sec = 1000
     _hdf_path = "p300dataset"
@@ -53,10 +50,13 @@ class DemonsP300Dataset(AbstractEegDataset):
     def sampling_rate(self) -> float:
         return 500.0
 
-    def download(self):
-        if self._check_integrity():
-            return
+    @property
+    def urls(self) -> Dict[str, Sequence[str]]:
+        return {
+            "origin": [
+                "https://gin.g-node.org/v-goncharenko/neiry-demons/raw/master/nery_demons_dataset.zip"
+            ]
+        }
 
-        self.root.mkdir(parents=True, exist_ok=True)
-        print(self.root)
-        download_url(self.url, self.root)
+    def download(self):
+        pass  # nothing to do - this is DVC based dataset
