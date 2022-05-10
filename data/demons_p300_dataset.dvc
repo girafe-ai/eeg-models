@@ -2,4 +2,4 @@ outs:
 - md5: 266269982d1960c0ebf26c8b454adddc.dir
   size: 511033730
   nfiles: 62
-  path: nery_demons_dataset
+  path: demons_p300_dataset
