@@ -1,6 +1,8 @@
 import numpy as np
-from somepytools.typing import Callable, Directory, Optional
+from somepytools.general import download_url
+from somepytools.typing import Callable, Directory, Optional, Tuple
 
+from .. import data_dir
 from .abstract import AbstractEegDataset
 from .constants import SPLIT_TRAIN
 
@@ -39,10 +41,22 @@ class DemonsP300Dataset(AbstractEegDataset):
         target_transform: Optional[Callable] = None,
         download: bool = True,
     ):
+        if root is None:
+            root = data_dir / "demons"
         super().__init__(root, split, transforms, transform, target_transform, download)
-        self.path = None
-        self.subjects_filenames = None
+
+    @property
+    def channels(self) -> Tuple[str]:
+        return ("Cz", "P3", "Pz", "P4", "PO3", "PO4", "O1", "O2")
 
     @property
     def sampling_rate(self) -> float:
         return 500.0
+
+    def download(self):
+        if self._check_integrity():
+            return
+
+        self.root.mkdir(parents=True, exist_ok=True)
+        print(self.root)
+        download_url(self.url, self.root)

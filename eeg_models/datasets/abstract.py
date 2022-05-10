@@ -34,6 +34,12 @@ class AbstractEegDataset:
 
     @property
     def sampling_rate(self) -> float:
+        """Sampling rate of original dataset, Hertz"""
+        raise NotImplementedError()
+
+    @property
+    def urls(self) -> Sequence[str]:
+        """Gives url"""
         raise NotImplementedError()
 
     def download(self):
