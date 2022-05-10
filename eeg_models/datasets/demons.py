@@ -39,7 +39,8 @@ class DemonsP300Dataset(AbstractEegDataset):
         download: bool = True,
     ):
         if root is None:
-            root = data_dir / "demons"
+            root = data_dir / "nery_demons_dataset"
+            # self._dvc = True
         super().__init__(root, split, transforms, transform, target_transform, download)
 
     @property
