@@ -1843,7 +1843,7 @@ data = ["dvc", "pandas"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "094ededcd3ec7d65b9088c489a6b075bd1a30d962c8a899c2b68718ef3a03bdb"
+content-hash = "aedcc42b4c4b1f435681d91f94106f4f94b26b4988575d17ce53aa9b3c19b4a7"
 
 [metadata.files]
 aiohttp = [
