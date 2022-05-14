@@ -1,0 +1,5 @@
+outs:
+- md5: 52e7bbcabf5a73b7d302f416530fcd22.dir
+  size: 511033730
+  nfiles: 62
+  path: demons_p300_dataset

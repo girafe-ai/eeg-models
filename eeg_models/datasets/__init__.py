@@ -1,2 +1,2 @@
 from .abstract import AbstractEegDataset
-from .braininvaders import BrainInvadersDataset
+from .demons import DemonsP300Dataset

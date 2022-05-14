@@ -1,0 +1,6 @@
+[core]
+    remote = gdrive-vg
+    check_update = false
+    autostage = true
+['remote "gdrive-vg"']
+    url = gdrive://1bd45QFDrxwTBOAnDQbCAuhU6zMLApqQl
