@@ -29,7 +29,7 @@ def main():
     )
     markers_pipe = transforms.MarkersTransformer(labels_mapping, decimation_factor)
 
-    for i in range(1, 1 + raw_dataset.__len__()):
+    for i in range(1, 1 + len(raw_dataset)):
         eeg_pipe.fit(raw_dataset.__getitem__(i)["eegs"])
 
     dataset = []
