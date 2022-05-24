@@ -1,13 +1,12 @@
 import glob
 import os
-import zipfile
 
 import mne
 from somepytools.io import read_yaml
-from somepytools.typing import Any, Callable, Dict, Directory, List, Optional
+from somepytools.typing import Any, Callable, Dict, Directory, Optional, Sequence
 
+from eeg_models import data_dir
 from eeg_models.datasets.abstract import AbstractEegDataset
-from eeg_models.utils import dt_path
 
 
 class BrainInvadersDataset(AbstractEegDataset):
@@ -28,13 +27,13 @@ class BrainInvadersDataset(AbstractEegDataset):
     - Electrodes:  16 wet Silver/Silver Chloride electrodes positioned at
       FP1, FP2, F5, AFz, F6, T7, Cz, T8, P7, P3, Pz, P4, P8, O1, Oz, O2
       according to the 10/20 international system.
-    - Reference: left ear-lobe.
-    - Ground: N/A.
     """
+
+    _default_root = "bi2013a"
+    subjects = tuple(range(1, 24 + 1))
 
     def __init__(
         self,
-        subjects: tuple = (1, 24),
         root: Optional[Directory] = None,
         split: str = "train",
         transforms: Optional[Callable] = None,
@@ -46,22 +45,25 @@ class BrainInvadersDataset(AbstractEegDataset):
         training: bool = True,
         online: bool = True,
     ) -> None:
-        self.subject_list = subjects
         self.adaptive = adaptive
         self.non_adaptive = non_adaptive
         self.training = training
         self.online = online
+
+        if root is None:
+            root = data_dir / self._default_root
+
         super().__init__(root, split, transforms, transform, target_transform, download)
 
-    def get_data(self, subjects: tuple = None) -> Any:
+    def get_data(self, _subjects: tuple = None) -> Any:
         data = []
 
-        if subjects is None:
-            subjects = self.subject_list
+        if _subjects is None:
+            _subjects = self.subjects
 
         data = dict()
-        for subject in subjects:
-            if subject not in self.subject_list:
+        for subject in _subjects:
+            if subject not in self.subjects:
                 raise ValueError("Invalid subject {:d} given".format(subject))
             data[subject] = self._get_single_subject_data(subject)
 
@@ -95,25 +97,13 @@ class BrainInvadersDataset(AbstractEegDataset):
     def data_path(
         self,
         subject: int,
-        path: Optional[Directory] = None,
     ) -> Optional[Directory]:
 
-        if subject not in self.subject_list:
+        if subject not in self.subjects:
             raise (ValueError("Invalid subject number"))
 
-        url = "{:s}subject{:d}.zip".format(
-            "https://zenodo.org/record/1494240/files/", subject
-        )
-        path_zip = dt_path(url, "BRAININVADERS")
-        path_folder = path_zip.strip("subject{:d}.zip".format(subject))
-
-        if not (os.path.isdir(path_folder + "subject{:d}".format(subject))):
-            print("unzip", path_zip)
-            zip_ref = zipfile.ZipFile(path_zip, "r")
-            zip_ref.extractall(path_folder)
-
         meta_file = os.path.join("subject{:d}".format(subject), "meta.yml")
-        meta = read_yaml(path_folder + meta_file)
+        meta = read_yaml(self.root / meta_file)
         conditions = []
         if self.adaptive:
             conditions = conditions + ["adaptive"]
@@ -135,13 +125,13 @@ class BrainInvadersDataset(AbstractEegDataset):
         for filename in filenames:
             subject_paths = subject_paths + glob.glob(
                 os.path.join(
-                    path_folder, "subject{:d}".format(subject), "Session*", filename
+                    self.root, "subject{:d}".format(subject), "Session*", filename
                 )
             )
         return subject_paths
 
     def __len__(self) -> int:
-        return len(self.subject_list)
+        return len(self.subjects)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         sessions = self._get_single_subject_data(index)
@@ -153,9 +143,18 @@ class BrainInvadersDataset(AbstractEegDataset):
         return {"eegs": eegs, "markers": markers}
 
     @property
-    def channels(self) -> List[str]:
+    def channels(self) -> Sequence[str]:
         return self._get_single_subject_data(1)["session_1"]["run_1"].ch_names[:-1]
 
-    def download(self, path: Optional[Directory] = None):
-        for subject in self.subject_list:
-            self.data_path(subject=subject, path=path)
+    @property
+    def sampling_rate(self) -> float:
+        """Sampling rate of original dataset, Hertz"""
+        return 512.0
+
+    @property
+    def urls(self) -> Dict[str, Sequence[str]]:
+        """Gives all known source url sets for this dataset"""
+        return {"origin": ["https://doi.org/10.5281/zenodo.1494163"]}
+
+    def download(self):
+        pass  # nothing to do - this is DVC based dataset
