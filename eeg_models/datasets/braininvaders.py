@@ -6,9 +6,8 @@ import mne
 from somepytools.io import read_yaml
 from somepytools.typing import Any, Callable, Dict, Directory, List, Optional
 
+from eeg_models.datasets.abstract import AbstractEegDataset
 from eeg_models.utils import dt_path
-
-from .abstract import AbstractEegDataset
 
 
 class BrainInvadersDataset(AbstractEegDataset):
@@ -35,7 +34,7 @@ class BrainInvadersDataset(AbstractEegDataset):
 
     def __init__(
         self,
-        subjects: tuple = tuple(range(1, 24 + 1)),
+        subjects: tuple = (1, 24),
         root: Optional[Directory] = None,
         split: str = "train",
         transforms: Optional[Callable] = None,
