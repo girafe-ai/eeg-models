@@ -40,13 +40,13 @@ class BrainInvadersDataset(AbstractEegDataset):
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
         download: bool = True,
-        non_adaptive: bool = True,
+        nonadaptive: bool = True,
         adaptive: bool = True,
         training: bool = True,
         online: bool = True,
     ) -> None:
         self.adaptive = adaptive
-        self.non_adaptive = non_adaptive
+        self.nonadaptive = nonadaptive
         self.training = training
         self.online = online
 
@@ -107,8 +107,8 @@ class BrainInvadersDataset(AbstractEegDataset):
         conditions = []
         if self.adaptive:
             conditions = conditions + ["adaptive"]
-        if self.non_adaptive:
-            conditions = conditions + ["non_adaptive"]
+        if self.nonadaptive:
+            conditions = conditions + ["nonadaptive"]
         types = []
         if self.training:
             types = types + ["training"]
@@ -134,12 +134,13 @@ class BrainInvadersDataset(AbstractEegDataset):
         return len(self.subjects)
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
-        sessions = self._get_single_subject_data(index)
         eegs, markers = [], []
-        for _, run in sorted(sessions["session_1"].items()):
-            r_data = run.get_data()
-            eegs.append(r_data[:-1])
-            markers.append(r_data[-1])
+        sessions = self._get_single_subject_data(index)
+        for session, _ in sorted(sessions.items()):
+            for _, run in sorted(sessions[session].items()):
+                r_data = run.get_data()
+                eegs.append(r_data[:-1])
+                markers.append(r_data[-1])
         return {"eegs": eegs, "markers": markers}
 
     @property
