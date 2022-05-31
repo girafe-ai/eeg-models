@@ -239,14 +239,14 @@ class EegTraining(object):
                 score_roc_auc,
             ) = self.metrics(target, pred)
             # print metrics
-            print("epoch : ", epoch, " - accuracy :", accuracy_skl)
-            print("epoch : ", epoch, "- precision : ", precision_skl)
-            print("epoch : ", epoch, "- recall :", recall_skl)
-            print("epoch : ", epoch, "- f1 score :", f1_score_skl)
-            print("epoch : ", epoch, "- ROC : fpr :", score_fpr)
-            print("epoch : ", epoch, "- ROC - tpr :", score_tpr)
-            print("epoch : ", epoch, "- auc_score :", auc_score)
-            print("epoch : ", epoch, "- roc_auc :", score_roc_auc)
+            # print("epoch : ", epoch, " - accuracy :", accuracy_skl)
+            # print("epoch : ", epoch, "- precision : ", precision_skl)
+            # print("epoch : ", epoch, "- recall :", recall_skl)
+            # print("epoch : ", epoch, "- f1 score :", f1_score_skl)
+            # print("epoch : ", epoch, "- ROC : fpr :", score_fpr)
+            # print("epoch : ", epoch, "- ROC - tpr :", score_tpr)
+            # print("epoch : ", epoch, "- auc_score :", auc_score)
+            # print("epoch : ", epoch, "- roc_auc :", score_roc_auc)
 
         with torch.no_grad():
             mini_batch_losses = []

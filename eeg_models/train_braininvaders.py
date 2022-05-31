@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from matplotlib import pyplot as plt
 from sklearn.metrics import (
     accuracy_score,
     auc,
@@ -238,6 +239,14 @@ class EegTraining(object):
         # print list of loss on train and val data
         print("  * train losses  :", train_losses)
         print("  * val losses :", val_losses)
+        epochs = [x for x in range(n_epochs)]
+        plt.plot(epochs, train_losses, marker=".", label="train_losses")
+        plt.plot(epochs, val_losses, marker=".", label="val_losses")
+        plt.title("loses of train and validation")
+        plt.xlabel("epochs")
+        plt.ylabel("loses")
+        plt.legend()
+        plt.show()
 
     def searchgrid(
         self,
