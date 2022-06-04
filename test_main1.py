@@ -10,30 +10,21 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from eeg_models.anomalydetection1 import outlier_remove
-from eeg_models.datasets.demons import DemonsP300Dataset
+from eeg_models.datasets.demons1 import DemonsP300Dataset
 from eeg_models.train_Demons1 import filter_decim_searchgrid
-
-# from eeg_models.train_Demons1 import (
-#     EEGtraining,
-#     filter_decim_searchgrid,
-#     print_losses,
-#     print_metric_results,
-# )
 from eeg_models.transforms1 import (
     ButterFilter,
     ChannellwiseScaler,
     Decimator,
     MarkersTransformer,
 )
-from eeg_models.vizualisation import multiple_plot_data
-
-
-# from eeg_models.anomalydetection import clearSubjectDataset
 
 
 """
     OUTLIER REMOVAL
 """
+
+# dataset for outlier detection
 
 labels_mapping = {1: 1, 2: 0, 0: 0}
 decimation_factor = 1
@@ -48,16 +39,14 @@ eeg_pipe = make_pipeline(
 
 markers_pipe = MarkersTransformer(labels_mapping, decimation_factor)
 
-sample_per_epoch = 300
-index = 10
+#  window size (300 or 400 or 500 ...) -> should be the same for outlier detection and classification
+sample_per_epoch = 400
 
-# list of subject indices used for outlier algorithm training
-# index_list = ["ALL"]
-index_list = [0, 10, 50]
-
-# subject indice on which outlier detection is applied : indice or "ALL"
-# subject = "ALL"
-subject = 15
+dataset = DemonsP300Dataset(
+    transform=eeg_pipe,
+    target_transform=markers_pipe,
+    sample_per_epoch=sample_per_epoch,
+)
 
 """
     outlier algorithm & training & output
@@ -65,29 +54,75 @@ subject = 15
     - "LOF" : Local Outlier Factor
 """
 
-algorithm = "IF"
+# Algorithm to use for outlier detection
+# algorithm = "LOF"
+algorithm = "LOF"
+
+# list of subject indices used for outlier algorithm training :  "ALL" or list of indices
+train_list = ["ALL"]
+# train_list = [1, 2, 3, 4, 5 ]
+
+# computation of outliers for a list of subjects indices or "ALL"
+subject_list = ["ALL"]
+# subject_list = [5, 15, 35, 55]
+
+# list of anomalies for subject in list of subject indices
+# output outliers= list of list of tuples (index_of_epoch, labels_of_epoch)
+# list of outliers tuples for 'i' subject in list of position = i
+
 
 outliers = outlier_remove(
-    algorithm, index_list, subject, eeg_pipe, markers_pipe, sample_per_epoch
+    dataset,
+    algorithm,
+    train_list,
+    subject_list,
 )
-print(outliers)
+
+
+# show outliers for subject : subject_tmp = 10
+# print("outlier epochs for subject : ", subject_tmp, " = ", [ outliers[subject_tmp][j][0] for j in range(len(outliers[subject_tmp]))] )
 
 
 """
-    MODEL TRAINING & VALIDATION
-    PARAMETER SEARCH
+    SAVE OUTLIERS  : dump  outliers in pickle file
+"""
+save_result = True
+
+if save_result:
+    date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    file_name = (
+        f"results-{date}-algo-{algorithm}-sub-{subject_list}-train-{train_list}.pickle"
+    )
+    with open(file_name, "wb") as outfile:
+        pickle.dump(outliers, outfile)
+
+
+"""
+    LOAD  PREVIOUS RESULTS  (from pickle file : date, algo : IF/LOF, sub : ALL/list of subject indices, train : ALL/list of subject indices)
+"""
+# file_name ='results-2022-06-02_00-46-35-subjets-IF-ALL-ALL-sample400.pickle'
+# file_name_restore = file_name
+# with open(file_name_restore, 'rb') as infile : outliers_restored = pickle.load(infile)
+
+# check outliers for subject : subject_tmp = 10
+# outliers_restored is a list of lists[tuple(indice of epoch, label of epoch)] = list of outliers per subject
+# outliers_restored[i] is the list of outliers for subject i
+
+outliers_restored = outliers
+
+print(outliers_restored)
+# print("outlier epochs for subject : ", subject_tmp, " = ", [ outliers_restored[subject_tmp][j][0] for j in range(len(outliers_restored[subject_tmp]))] )
+
+
+"""
+    MODEL TRAINING & VALIDATION & PARAMETER SEARCH
 """
 
-# sample_per_epoch = 400
-# sampling_rate = 512
-# decimation_factor = 5
-# filter = (4, 0.5, 20)
-# batch_size = 4
-# validation_split = 0.2
-# n_epochs = 2
 
 """
-    Model definition : nn_parameters
+    Reminder :
+
+    Model definition in nn_parameters :
         n_classes: int,
         n_channels: int = 64,
         n_samples: int = 128,
@@ -98,17 +133,22 @@ print(outliers)
         f2: Optional[int] = None,
 
 """
+
+
+"""
+    MODEL TRAINING & VALIDATION  : test
+"""
+
 # if not sample_per_epoch // decimation_factor:
 #     raise ValueError("Decimation factor must divide sample_per_epoch")
-
+#
+# define : filter, batch_size, validation_split, sampling_rate, decimataion_factor, nn_parameters, n_epochs
+#
+# sample_per_epoch = 400
+# decimation_factor = 1
 # nn_parameters = {'n_classes' : 2, 'n_channels' : 8, 'n_samples' : sample_per_epoch // decimation_factor, 'dropout_rate' : 0.5, \
 #      'rate' : 128, 'f1' : 8, 'd' : 2, 'f2' : None}
-
-
-"""
-    MODEL TRAINING & VALIDATION
-"""
-
+#
 # model_to_train = EEGtraining(nn_parameters, sample_per_epoch)
 # model_to_train.set_loaders(decimation_factor, sampling_rate, filter, batch_size, validation_split)
 # metrics_model, train_losses, val_losses = model_to_train.train_val(n_epochs)
@@ -117,52 +157,75 @@ print(outliers)
 
 
 """
-    SEARCH OF PARAMETERS
-
-    MODEL PARAMETER SEARCH
+    SEARCH OF PARAMETERS :
+    define set of parameters fo nn_parameters, sample_per_epoch, decimation_factor, filter parameters
+    searchgrid : training & val on all parameter combinations
 
     don't change :
     - n_classes = 2  (output class number)
-    - n_channels = 8 (input channel number)
+    - n_channels = 8 (input channel number)  depend on dataset (in Demons : 8 channels are recorded)
 
 """
+# reference window size
+# can be change in sample_per_epoch_pipeline list : this last value will be used to reshape NN
+# to keep it compatible with dataset window  (n_sample = y axis of data epochs)
+NSAMPLES = 400
 
+# check sampling rate is the same in dataset
 sampling_rate = 512
-batch_size = 4
+
+# training and validation parameters
+batch_size = 6
 validation_split = 0.2
-n_epochs = 20
+n_epochs = 2
 
-
+# list of NN parameters to test
 nn_parameters_pipeline = [
+    # {
+    #     "n_classes": 2,
+    #     "n_channels": 8,
+    #     "n_samples": NSAMPLES,
+    #     "dropout_rate": 0.5,
+    #     "rate": 128,
+    #     "f1": 8,
+    #     "d": 2,
+    #     "f2": None,
+    # },
     {
         "n_classes": 2,
         "n_channels": 8,
-        "n_samples": 400,
-        "dropout_rate": 0.5,
-        "rate": 254,
+        "n_samples": NSAMPLES,
+        "dropout_rate": 0.2,
+        "rate": 256,
         "f1": 8,
         "d": 2,
         "f2": None,
-    },  # {'n_classes' : 2, 'n_channels' : 8, 'n_samples' : 400, 'dropout_rate' : 0.5, 'rate' : 128, 'f1' : 8, 'd' : 2, 'f2' : None}, \
+    },
     # {'n_classes' : 2, 'n_channels' : 8, 'n_samples' : 400, 'dropout_rate' : 0.2, 'rate' : 128, 'f1' : 8, 'd' : 2, 'f2' : None}
 ]
 
+# lis of window sizes to test
 sample_per_epoch_pipeline = [
+    # 300,
     400,
-    # 600
+    # 500
 ]
 
+# list of decimation factor to test
 decimator_pipeline = [
+    # 1,
     5,
-    # 5
 ]
 
-
+# list of filter parameters to test
 filter_pipeline = [
     (4, 0.5, 20),
     # (5, 0.5, 20)
 ]
 
+# to use dataset without outliers epochs :  outliers_restored  must be not None, and equal to output of outlier_remove() function)
+# outliers_restored = None
+print(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
 results = filter_decim_searchgrid(
     nn_parameters_pipeline,
@@ -173,15 +236,19 @@ results = filter_decim_searchgrid(
     validation_split,
     n_epochs,
     sampling_rate,
+    outliers_restored,
 )
 
+print(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
 """
-    PLOT results
-    transform results in dataframe
-    results : nn_parameters, sample_per_epoch, decimation_factor, filter, metrics_param_model, train_losses, val_losses)
+    PLOT results :
+    - transform results in dataframe
+    - results : nn_parameters, sample_per_epoch, decimation_factor, filter, metrics_param_model, train_losses, val_losses)
 """
 
+
+# necessary for down computings : (dump, etc..)
 results = pd.DataFrame(results)
 
 results.columns = [
@@ -194,110 +261,110 @@ results.columns = [
     "val_losses",
 ]
 
-
-"""
-    SAVE RESULTS
-"""
-
-# import datetime
-# import pickle
-
-
-date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-# with open('test.pickle', 'rb') as infile : results = pickle.load(infile)
-
-with open(f"results-{date}.pickle", "wb") as outfile:
-    pickle.dump(results, outfile)
-
-# with open(f'results-{date}', 'rb') as infile : results = pickle.load(infile)
-
-
-# result_test.iloc[0]['A'] : pour accéder à l'élément de la ligne 0 et colonne A
-# result_test.shape[0]  : nombre de lignes
-
 row, col = results.shape
 
-# for i in range(row):
+"""
+    USE PREVIOUS RESULTS : load results from pickle file
+"""
+# with open(f"results-2022-06-04_02-30-17-algo-IF-sub-['ALL']-train-['ALL']-num_tests-4.pickle", 'rb') as infile:
+#     results = pickle.load(infile)
+
+"""
+    SAVE RESULTS  : dump results in pickle file
+"""
+date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+with open(
+    f"results-{date}-algo:{algorithm}-sub:{subject_list}-train:{train_list}-tests:{results.shape[0]}.pickle",
+    "wb",
+) as outfile:
+    pickle.dump(results, outfile)
+
+
+"""
+    PLOTS : LOSS, F1, ACCURACY
+"""
+
+# PLOT : LOSS
 for i in range(row):
-    plt.figure(figsize=(10, 10))
-    plt.title(
-        f'{results.iloc[i]["sample_per_epoch"]} : samples per epoch  - {results.iloc[i]["decimation_factor"]} : decimation factor - {results.iloc[i]["filter"]} : filter'
-    )
+    fig = plt.figure(figsize=(10, 10))
+    if outliers_restored is None:
+        plt.title(
+            f"{results.iloc[i]['sample_per_epoch']}:s_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
+    else:
+        plt.title(
+            f"{algorithm}:algo-{results.iloc[i]['sample_per_epoch']}:sa_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
+
     plt.plot(results.iloc[i]["train_losses"], label="train")
     plt.plot(results.iloc[i]["val_losses"], label="val")
     plt.xlabel("epoch")
     plt.ylabel("loss")
     plt.legend()
     plt.show()
+    if outliers_restored is None:
+        fig.savefig(
+            f"loss-{date}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )
+    else:
+        fig.savefig(
+            f"loss-{date}-algo:{algorithm}-sub:{subject_list}-train:{train_list}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )
 
-# for i in range(row):
+# PLOT : F1
 for i in range(row):
-    plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 10))
     y = []
     for j in range(len(results.iloc[i]["metrics_param_model"])):
-        y.append(results.iloc[i]["metrics_param_model"][j][3])
-    plt.title(
-        f'{results.iloc[i]["sample_per_epoch"]} : samples per epoch  - {results.iloc[i]["decimation_factor"]} : decimation factor - {results.iloc[i]["filter"]} : filter'
-    )
+        y.append(results.iloc[i]["metrics_param_model"][j][4])
+    if outliers_restored is None:
+        plt.title(
+            f"{results.iloc[i]['sample_per_epoch']}:s_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
+    else:
+        plt.title(
+            f"{algorithm}:algo-{results.iloc[i]['sample_per_epoch']}:sa_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
     plt.xlabel("Epochs")
     plt.ylabel("(val) f1 score")
     plt.plot(np.array(y), label="f1 score")
     plt.legend()
     plt.show()
+    if outliers_restored is None:
+        fig.savefig(
+            f"f1-{date}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )
+    else:
+        fig.savefig(
+            f"f1-{date}-algo:{algorithm}-sub:{subject_list}-train:{train_list}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )
 
 
-# for i in range(row):
+#  PLOT : ACCURACY
 for i in range(row):
-    plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 10))
     y = []
     for j in range(len(results.iloc[i]["metrics_param_model"])):
         y.append(results.iloc[i]["metrics_param_model"][j][1])
-    plt.title(
-        f'{results.iloc[i]["sample_per_epoch"]} : samples per epoch  - {results.iloc[i]["decimation_factor"]} : decimation factor - {results.iloc[i]["filter"]} : filter'
-    )
+    if outliers_restored is None:
+        plt.title(
+            f"{results.iloc[i]['sample_per_epoch']}:s_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
+    else:
+        plt.title(
+            f"{algorithm}:algo-{results.iloc[i]['sample_per_epoch']}:sa_per_epoch-{results.iloc[i]['decimation_factor']}:dec-{results.iloc[i]['filter']}:fi-{results.iloc[i]['nn_parameters']['rate']}:rate-{results.iloc[i]['nn_parameters']['dropout_rate']}:drop"
+        )
     plt.xlabel("Epochs")
     plt.ylabel("(val) accuracy")
     plt.plot(np.array(y), label="accuracy")
     plt.legend()
     plt.show()
-
-
-"""
-    PLOT :  plot of runs (by index) of the same subject
-"""
-# sampling_rate
-sampling_rate = 500
-decimation_factor = 1
-order = 4
-highpass = 0.5
-lowpass = 20
-labels_mapping = {1: 1, 2: 0, 0: 0}
-# sample per epoch of each epoch output from getitem
-sample_per_epoch = 400
-eeg_pipe = make_pipeline(
-    Decimator(decimation_factor),
-    ButterFilter(sampling_rate // decimation_factor, order, highpass, lowpass),
-    ChannellwiseScaler(StandardScaler()),
-)
-markers_pipe = MarkersTransformer(labels_mapping, decimation_factor)
-# dataset init
-n_samplesdecimated = sample_per_epoch // decimation_factor
-my_dataset = DemonsP300Dataset(
-    transform=eeg_pipe, target_transform=markers_pipe, sample_per_epoch=sample_per_epoch
-)
-# PLOT  : index is here index of subject
-# plot data for subject 0 (17 epochs)
-#    index of subject in [0, ..., 60]
-subject_id = 0
-#  max number of samples to plot
-number_sample = 400
-# list of epoch index to plot
-index = [0, 11, 22]
-multiple_plot_data(my_dataset, subject_id, number_sample, index)
-
-"""
-    ANOMALY DETECTION
-"""
-# anomaly detection exemple
-# clearSubjectDataset(my_dataset, subject_id=0, session_id=0, run_id=0)
+    if outliers_restored is None:
+        fig.savefig(
+            f"accuracy-{date}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )
+    else:
+        fig.savefig(
+            f"accuracy-{date}-algo:{algorithm}-sub:{subject_list}-train:{train_list}-test:{i}-rate:{results.iloc[i]['nn_parameters']['rate']}-drop:{results.iloc[i]['nn_parameters']['dropout_rate']}-dec:{results.iloc[i]['decimation_factor']}-spe:{results.iloc[i]['sample_per_epoch']}-fil:{results.iloc[i]['filter']}.png"
+        )

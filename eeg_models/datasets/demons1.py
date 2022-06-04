@@ -97,7 +97,11 @@ class DemonsP300Dataset(AbstractEegDataset):
             raw = np.hstack(run_data)
             runs_raw[f"run_{i}"] = raw
         data = {"session_0": runs_raw}
-        NROWS = 170
+
+        # NROWS : int, number of rows in the dataset output by the loader
+        # 250  = 5 events par period x  10 periods per run x 5 runs with events "1"
+        # runs with no "1" events are not included and used
+        NROWS = 250
         nrows = NROWS
 
         data_tab, label_tab, index_tab = self._get_data_tab(data, nrows)
@@ -115,15 +119,13 @@ class DemonsP300Dataset(AbstractEegDataset):
             filtered_eeg.append(result)
             filtered_label.append(label_tab[i])
             filtered_index.append(index_tab[i])
+
         output = (
             torch.as_tensor(np.stack(filtered_eeg)).float(),
             torch.as_tensor(np.stack(filtered_label)).float(),
+            torch.as_tensor(np.array([index])),
         )
-        # shuffling
-        indices = torch.randperm(output[0].size()[0])
-        o1 = output[0][indices]
-        o2 = output[1][indices]
-        output = (o1, o2)
+
         return output
 
     def _get_data_tab(self, data, nrows):
@@ -143,55 +145,71 @@ class DemonsP300Dataset(AbstractEegDataset):
                 data_tmp = []
                 label_tmp = []
                 index_tmp = []
-                i_low = 200
-                i_high = i_low + self.sample_per_epoch
-                m_low = -100
-                m_high = m_low + self.sample_per_epoch
-                # find event of interest
+
+                # find event of interest : label = '1'
                 signal = data[f"session_{i}"][f"run_{j}"][9]
                 signal_test = [
                     (indice, signal[indice])
                     for indice in range(len(signal))
-                    if signal[indice] == 1
+                    if signal[indice] == 1 or signal[indice] == 2
                 ]
-                # for each event create one epoch of self.sample_per_batch samples
+                # for each event create one epoch of self.sample_per_batch samples (window size)
                 if signal_test == []:
-                    for k in range(10):
-                        # limits = ( 300 + k * 1400, 700 + k * 1400)
-                        limits = (i_low + k * 1400, i_high + k * 1400)
-                        if (
-                            data[f"session_{i}"][f"run_{j}"][
-                                0:8, limits[0] : limits[1]
-                            ].shape[1]
-                            == self.sample_per_epoch
-                        ):
-                            data_tmp.append(
-                                data[f"session_{i}"][f"run_{j}"][
-                                    0:8, limits[0] : limits[1]
-                                ]
-                            )
-                            label_tmp.append(np.array([0.0]))
-                            index_tmp.append(np.array([limits[0], limits[1]]))
-                if signal_test != []:
+                    continue
+
+                if signal_test != [] and (1 in signal):
                     for k in range(len(signal_test)):
-                        current_indice = signal_test[k][0]
-                        if (
-                            data[f"session_{i}"][f"run_{j}"][
-                                0:8, current_indice + m_low : current_indice + m_high
-                            ].shape[1]
-                            == self.sample_per_epoch
-                        ):
+
+                        # if target then signal = 1  -> label = 1
+                        # if not target then signal = 2 -> label = 0
+
+                        if signal_test[k][1] == 0:
+                            continue
+
+                        elif signal_test[k][1] == 1 and signal_test[k][
+                            0
+                        ] + self.sample_per_epoch < len(signal):
                             data_tmp.append(
                                 data[f"session_{i}"][f"run_{j}"][
-                                    0:8, current_indice + m_low : current_indice + m_high
+                                    0:8,
+                                    signal_test[k][0] : signal_test[k][0]
+                                    + self.sample_per_epoch,
                                 ]
                             )
+
                             label_tmp.append(np.array([1.0]))
+
                             index_tmp.append(
                                 np.array(
-                                    [current_indice + m_low, current_indice + m_high]
+                                    [
+                                        signal_test[k][0],
+                                        signal_test[k][0] + self.sample_per_epoch,
+                                    ]
                                 )
                             )
+
+                        elif signal_test[k][1] == 2 and signal_test[k][
+                            0
+                        ] + self.sample_per_epoch < len(signal):
+                            data_tmp.append(
+                                data[f"session_{i}"][f"run_{j}"][
+                                    0:8,
+                                    signal_test[k][0] : signal_test[k][0]
+                                    + self.sample_per_epoch,
+                                ]
+                            )
+
+                            label_tmp.append(np.array([0.0]))
+
+                            index_tmp.append(
+                                np.array(
+                                    [
+                                        signal_test[k][0],
+                                        signal_test[k][0] + self.sample_per_epoch,
+                                    ]
+                                )
+                            )
+
                 data_tab += data_tmp
                 label_tab += label_tmp
                 index_tab += index_tmp

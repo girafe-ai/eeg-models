@@ -27,6 +27,7 @@ somepytools = "1.2.2"
 dvc = {extras = ["gdrive"], version = "^2.10.2", optional = true}
 pandas = {version = "^1.4.2", optional = true}
 h5py = "^3.6.0"
+pickle-mixin = "^1.0.2"
 
 [tool.poetry.extras]
 data = ['dvc', 'pandas']

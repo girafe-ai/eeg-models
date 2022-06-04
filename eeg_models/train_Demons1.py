@@ -1,11 +1,7 @@
 import numpy as np
 import torch
-
-# import torch.functional as F
 import torch.nn as nn
 import torch.optim as optim
-
-# import torchmetrics.functional as M
 from sklearn.metrics import (
     accuracy_score,
     auc,
@@ -17,13 +13,10 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-
-# from torch.utils.data import DataLoader, TensorDataset, random_split
-# from torch.utils.data import DataLoader, TensorDataset
-# from torch.utils.data.dataset import random_split
+from sklearn.utils import class_weight
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from eeg_models.datasets.demons import DemonsP300Dataset
+from eeg_models.datasets.demons1 import DemonsP300Dataset
 from eeg_models.eegnet import EegNet
 from eeg_models.transforms1 import (
     ButterFilter,
@@ -62,21 +55,33 @@ class EEGtraining(object):
             f2: Optional[int] = None,
 
         """
+        # exemple of nn_parameters :
         # nn_parameters = {'n_classes' : 2, 'n_channels' : 8, 'n_samples' : sample_per_epoch // decimation_factor, 'dropout_rate' : 0.5, \
         #     'rate' : 128, 'f1' : 8, 'd' : 2, 'f2' : None}
-
+        # base model :
         # model = EegNet(2, 8, n_samples)
 
         model = EegNet(
             self.nn_parameters["n_classes"],
             self.nn_parameters["n_channels"],
             self.nn_parameters["n_samples"],
+            self.nn_parameters["dropout_rate"],
+            self.nn_parameters["rate"],
+            self.nn_parameters["f1"],
+            self.nn_parameters["d"],
+            self.nn_parameters["f2"],
         )
 
         return model
 
     def set_loaders(
-        self, decimation_factor, sampling_rate, filter, batch_size, validation_split
+        self,
+        decimation_factor,
+        sampling_rate,
+        filter,
+        batch_size,
+        validation_split,
+        outliers,
     ):
 
         order, highpass, lowpass = filter
@@ -101,49 +106,94 @@ class EEGtraining(object):
 
         markers_pipe = MarkersTransformer(labels_mapping, decimation_factor)
 
-        # n_samplesdecimated = self.sample_per_epoch // decimation_factor
-
-        # model = EegNet(2, 8, n_samplesdecimated)
-        # model =  EegNet(nn_parameters)
-
         self.model = self.EEGmodel()
         # optimizer
         self.optimizer = optim.Adam(self.model.parameters())
         self.optimizer.zero_grad()
-        # criterion
-        # self.loss_fn = nn.CrossEntropyLoss()
-        self.loss_fn = nn.CrossEntropyLoss(
-            weight=(torch.FloatTensor([0.1, 0.9])).to(self.device)
-        )
-        # collate_fn
 
-        def collate_adapt(batch):
-            input = torch.stack([batch[i][0] for i in range(len(batch))], dim=0).reshape(
-                -1, batch[0][0].shape[1], batch[0][0].shape[2]
-            )
-            label = (
-                torch.stack([batch[i][1] for i in range(len(batch))], dim=0)
-                .reshape(-1, batch[0][1].shape[1])
-                .reshape(-1)
-                .to(dtype=torch.int64)
-            )
+        if outliers:
+            self.outliers = outliers
+        else:
+            self.outliers = None
+
+        def collate_outliers(batch):
+            if self.outliers is None:
+                input = torch.stack(
+                    [batch[i][0] for i in range(len(batch))], dim=0
+                ).reshape(-1, batch[0][0].shape[1], batch[0][0].shape[2])
+                label = (
+                    torch.stack([batch[i][1] for i in range(len(batch))], dim=0)
+                    .reshape(-1, batch[0][1].shape[1])
+                    .reshape(-1)
+                    .to(dtype=torch.int64)
+                )
+            else:
+                nrows = len(batch[0][0])
+                list_batch_without_outliers = []
+                list_batch_label_without_outliers = []
+                for i in range(len(batch)):
+                    list_index_to_remove = [
+                        outliers[batch[i][2]][j][0]
+                        for j in range(len(outliers[batch[i][2]]))
+                    ]
+                    list_index = [
+                        k for k in range(nrows) if k not in list_index_to_remove
+                    ]
+                    list_batch_without_outliers.append(batch[i][0][list_index, :])
+                    list_batch_label_without_outliers.append(batch[i][1][list_index])
+
+                input = torch.vstack(list_batch_without_outliers)
+
+                label = (
+                    torch.vstack(list_batch_label_without_outliers)
+                    .reshape(-1)
+                    .to(dtype=torch.int64)
+                )
+
             return input, label
 
         # available device :
         print(self.device)
+
         # training and validation dataset from dataset
 
-        # sample_per_epoch = self.sample_per_epoch
-        # my_dataset = DemonsP300Dataset(transform=eeg_pipe, target_transform=markers_pipe, sample_per_epoch=sample_per_epoch)
         my_dataset = DemonsP300Dataset(
             transform=eeg_pipe,
             target_transform=markers_pipe,
             sample_per_epoch=self.sample_per_epoch,
         )
 
+        # criterion
+        # self.loss_fn = nn.CrossEntropyLoss()
+
+        ##########################
+        # weighted cross entropy
+        ##########################
+
+        all_label = []
+        for i in range(len(my_dataset)):
+            output = my_dataset[i]
+            output_label = output[
+                1
+            ].numpy()  # labels of epochs of one subject i : tensor(#nrow, 1)
+            all_label.append(output_label)
+            print("weighted cross entropy - subject : ", i)
+
+        all_label = np.vstack(all_label).reshape(-1)
+        class_weights = class_weight.compute_class_weight(
+            class_weight="balanced", classes=np.unique(all_label), y=all_label
+        )
+
+        # class_weights = [0.6250, 2.5]
+
+        class_weights = torch.tensor(class_weights, dtype=torch.float).to(self.device)
+
+        self.loss_fn = nn.CrossEntropyLoss(weight=class_weights, reduction="mean")
+
         # initialization
         shuffle_dataset = True
         random_seed = 42
+
         # Creating data indices for training and validation splits:
         dataset_size = len(my_dataset)
         indices = list(range(dataset_size))
@@ -152,19 +202,24 @@ class EEGtraining(object):
             np.random.seed(random_seed)
             np.random.shuffle(indices)
         train_indices, val_indices = indices[split:], indices[:split]
+
         # Creating PT data samplers and loaders:
         train_sampler = SubsetRandomSampler(train_indices)
         valid_sampler = SubsetRandomSampler(val_indices)
+
         self.train_loader = torch.utils.data.DataLoader(
             my_dataset,
             batch_size=batch_size,
-            collate_fn=collate_adapt,
+            # collate_fn=collate_adapt,
+            collate_fn=collate_outliers,
             sampler=train_sampler,
         )
+
         self.val_loader = torch.utils.data.DataLoader(
             my_dataset,
             batch_size=batch_size,
-            collate_fn=collate_adapt,
+            # collate_fn=collate_adapt,
+            collate_fn=collate_outliers,
             sampler=valid_sampler,
         )
 
@@ -189,7 +244,7 @@ class EEGtraining(object):
         # 2nd class
         score_fpr2, score_tpr2, _ = roc_curve(target, pred[:, 1].astype(np.float64))
         auc_score2 = auc(score_fpr2, score_tpr2)
-        # another estimate of roc_curve : y_score = probalility estimate of positive label (argmax)
+        # estimate of roc_curve : y_score = probalility estimate of positive label (argmax)
         # pred_roc_curve = pred[:, np.argmax(pred, axis=1)]
         pred_roc_curve = np.array(
             [pred[j, np.argmax(pred, axis=1)[j]] for j in range(pred.shape[0])]
@@ -368,6 +423,7 @@ def filter_decim_searchgrid(
     validation_split,
     n_epochs,
     sampling_rate,
+    outliers=None,
 ):
 
     results = []
@@ -402,6 +458,7 @@ def filter_decim_searchgrid(
                         filter,
                         batch_size,
                         validation_split,
+                        outliers,
                     )
                     (
                         metrics_param_model,
