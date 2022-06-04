@@ -7,6 +7,7 @@ import torch.optim as optim
 from sklearn.metrics import (
     accuracy_score,
     auc,
+    balanced_accuracy_score,
     f1_score,
     precision_score,
     recall_score,
@@ -29,6 +30,8 @@ from eeg_models.transforms import (
 
 
 class EegTraining(object):
+    results = None
+
     def __init__(self, sampling_rate) -> None:
         self.loss_fn = None
         self.optimizer = None
@@ -57,18 +60,18 @@ class EegTraining(object):
         validation_split,
     ):
         order, highpass, lowpass = filter
-        print(
-            ">> Decimation factor : ",
-            decimation_factor,
-            "- epoch_duration : ",
-            epoch_duration,
-            "- order : ",
-            order,
-            "-highpass : ",
-            highpass,
-            " - lowpass : ",
-            lowpass,
-        )
+        # print(
+        #     ">> Decimation factor : ",
+        #     decimation_factor,
+        #     "- epoch_duration : ",
+        #     epoch_duration,
+        #     "- order : ",
+        #     order,
+        #     "-highpass : ",
+        #     highpass,
+        #     " - lowpass : ",
+        #     lowpass,
+        # )
         final_rate = self.sampling_rate // decimation_factor
         labels_mapping = {33285.0: 1, 33286.0: 0}
         reload(transforms)
@@ -88,7 +91,7 @@ class EegTraining(object):
         self.loss_fn = nn.CrossEntropyLoss()
 
         # available device :
-        print(self.device)
+        # print(self.device)
         raw_dataset = BrainInvadersDataset()
         for i in range(1, 1 + len(raw_dataset)):
             eeg_pipe.fit(raw_dataset[i]["eegs"])
@@ -152,6 +155,7 @@ class EegTraining(object):
         )
 
     def metrics(self, target, pred):
+        balanced_accuracy_skl = balanced_accuracy_score(target, pred)
         accuracy_skl = accuracy_score(target, pred, normalize=True)
         precision_skl = precision_score(target, pred, average="binary")
         recall_skl = recall_score(target, pred, average="binary")
@@ -160,6 +164,7 @@ class EegTraining(object):
         auc_score = auc(score_fpr, score_tpr)
         score_roc_auc = roc_auc_score(target, pred)
         return (
+            balanced_accuracy_skl,
             accuracy_skl,
             precision_skl,
             recall_skl,
@@ -178,7 +183,7 @@ class EegTraining(object):
         self.optimizer = optim.Adam(self.model.parameters())
         optimizer = self.optimizer
         # compute
-        for epoch in range(n_epochs):
+        for _ in range(n_epochs):
             mini_batch_losses = []
             indice = 0
             for x_batch, y_batch in self.train_loader:
@@ -189,7 +194,7 @@ class EegTraining(object):
                 # outputs and loss
                 outputs = self.model(x_batch)
                 loss = self.loss_fn(outputs, y_batch)
-                print("epoch -", epoch, " - train -", indice, " : ", loss)
+                # print("epoch -", epoch, " - train -", indice, " : ", loss)
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -198,7 +203,7 @@ class EegTraining(object):
                 indice += 1
             loss_mean = np.mean(mini_batch_losses)
             train_losses.append(loss_mean)
-            print("train - epoch : ", epoch, "epoch loss mean = ", loss_mean)
+            # print("train - epoch : ", epoch, "epoch loss mean = ", loss_mean)
             target_list = []
             pred_list = []
 
@@ -213,7 +218,7 @@ class EegTraining(object):
                     # outputs and loss
                     outputs = self.model(x_batch)
                     loss = self.loss_fn(outputs, y_batch)
-                    print("epoch -", epoch, " - val -", indice, " - ", loss)
+                    # print("epoch -", epoch, " - val -", indice, " - ", loss)
                     # store loss
                     mini_batch_losses.append(loss.item())
                     # store target and predicted value to compute metrics
@@ -222,13 +227,14 @@ class EegTraining(object):
                     indice += 1
             loss_mean = np.mean(mini_batch_losses)
             val_losses.append(loss_mean)
-            print("val - epoch : ", epoch, "epoch loss mean = ", loss_mean)
+            # print("val - epoch : ", epoch, "epoch loss mean = ", loss_mean)
             # compute metrics
             target = torch.cat(target_list)
             pred = torch.cat(pred_list)
             target = target.cpu().numpy()
             pred = pred.cpu().numpy()
             (
+                balanced_accuracy_skl,
                 accuracy_skl,
                 precision_skl,
                 recall_skl,
@@ -239,6 +245,7 @@ class EegTraining(object):
                 score_roc_auc,
             ) = self.metrics(target, pred)
             # print metrics
+            # print("epoch : ", epoch, " - balanced_accuracy_skl :", balanced_accuracy_skl)
             # print("epoch : ", epoch, " - accuracy :", accuracy_skl)
             # print("epoch : ", epoch, "- precision : ", precision_skl)
             # print("epoch : ", epoch, "- recall :", recall_skl)
@@ -259,7 +266,7 @@ class EegTraining(object):
                 # outputs and loss
                 outputs = self.model(x_batch)
                 loss = self.loss_fn(outputs, y_batch)
-                print(" test -", indice, " - ", loss)
+                # print(" test -", indice, " - ", loss)
                 # store loss
                 mini_batch_losses.append(loss.item())
                 # store target and predicted value to compute metrics
@@ -268,13 +275,14 @@ class EegTraining(object):
                 indice += 1
         loss_mean = np.mean(mini_batch_losses)
         test_losses.append(loss_mean)
-        print("test loss mean = ", loss_mean)
+        # print("test loss mean = ", loss_mean)
         # compute metrics
         target = torch.cat(target_list)
         pred = torch.cat(pred_list)
         target = target.cpu().numpy()
         pred = pred.cpu().numpy()
         (
+            balanced_accuracy_skl,
             accuracy_skl,
             precision_skl,
             recall_skl,
@@ -285,22 +293,25 @@ class EegTraining(object):
             score_roc_auc,
         ) = self.metrics(target, pred)
         # print metrics
-        print("test - accuracy :", accuracy_skl)
-        print("test - precision : ", precision_skl)
-        print("test - recall :", recall_skl)
-        print("test - f1 score :", f1_score_skl)
-        print("test - ROC : fpr :", score_fpr)
-        print("test - ROC - tpr :", score_tpr)
-        print("test - auc_score :", auc_score)
-        print("test - roc_auc :", score_roc_auc)
+        # print("test - balanced_accuracy_skl :", balanced_accuracy_skl)
+        # print("test - accuracy :", accuracy_skl)
+        # print("test - precision : ", precision_skl)
+        # print("test - recall :", recall_skl)
+        # print("test - f1 score :", f1_score_skl)
+        # print("test - ROC : fpr :", score_fpr)
+        # print("test - ROC - tpr :", score_tpr)
+        # print("test - auc_score :", auc_score)
+        # print("test - roc_auc :", score_roc_auc)
         # print list of loss on train, val and test data
-        print("  * train losses  :", train_losses)
-        print("  * val losses    :", val_losses)
-        print("  * test loss     :", test_losses)
+        # print("  * train losses  :", train_losses)
+        # print("  * val losses    :", val_losses)
+        # print("  * test loss     :", test_losses)
+        self.results = balanced_accuracy_skl
 
     def searchgrid(
         self,
         decimator_pipeline,
+        epoch_duration_pipeline,
         filter_pipeline,
         batch_size,
         validation_split,
@@ -308,9 +319,15 @@ class EegTraining(object):
         sampling_rate,
     ):
         for _, decimation_factor in enumerate(decimator_pipeline):
-            for _, (order, highpass, lowpass) in enumerate(filter_pipeline):
-                filter = (order, highpass, lowpass)
-                self.set_loaders(
-                    decimation_factor, sampling_rate, filter, batch_size, validation_split
-                )
-                self.train_val(n_epochs)
+            for _, epoch_duration in enumerate(epoch_duration_pipeline):
+                for _, (order, highpass, lowpass) in enumerate(filter_pipeline):
+                    filter = (order, highpass, lowpass)
+                    self.set_loaders(
+                        decimation_factor,
+                        epoch_duration,
+                        sampling_rate,
+                        filter,
+                        batch_size,
+                        validation_split,
+                    )
+                    self.train_val_test(n_epochs)
