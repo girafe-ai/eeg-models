@@ -8,12 +8,12 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import SVC
-from somepytools.typing import Any, Dict
+from somepytools.typing import Any
 
 
 class PyRimanianClassifier:
     def __init__(self) -> None:
-        self.classifier = {
+        self.classifiers = {
             "LR": (
                 make_pipeline(Vectorizer(), LogisticRegression()),
                 {"logisticregression__C": np.exp(np.linspace(-4, 4, 5))},
@@ -54,7 +54,4 @@ class PyRimanianClassifier:
         }
 
     def select_classifier(self, name: str) -> Any:
-        return self.classifier[name][0]
-
-    def set_of_parameters(self, name: str) -> Dict[str, Any]:
-        return self.classifier[name][1]
+        return self.classifiers[name]
