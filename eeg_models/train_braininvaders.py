@@ -7,6 +7,7 @@ import torch.optim as optim
 from sklearn.metrics import (
     accuracy_score,
     auc,
+    balanced_accuracy_score,
     f1_score,
     precision_score,
     recall_score,
@@ -17,27 +18,26 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data.sampler import SubsetRandomSampler
 
-from eeg_models import transforms
+import transforms
 from eeg_models.datasets.braininvaders import BrainInvadersDataset
 from eeg_models.eegnet import EegNet
-from eeg_models.transforms import (
-    ButterFilter,
-    ChannellwiseScaler,
-    Decimator,
-    MarkersTransformer,
-)
+from transforms import ButterFilter, ChannellwiseScaler, Decimator, MarkersTransformer
 
 
 class EegTraining(object):
-    def __init__(self, sampling_rate) -> None:
+    results = None
+
+    def __init__(self, sampling_rate, m_data) -> None:
         self.loss_fn = None
         self.optimizer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # window size : number of samples per epochs in output of dataset before decimation
         self.sampling_rate = sampling_rate  # 512
+        self.m_data = m_data
         self.model = None
         self.train_loader = None
         self.val_loader = None
+        self.test_loader = None
         self.losses = []
         self.val_losses = []
         self.total_epochs = 0
@@ -91,7 +91,6 @@ class EegTraining(object):
         raw_dataset = BrainInvadersDataset()
         for i in range(1, 1 + len(raw_dataset)):
             eeg_pipe.fit(raw_dataset[i]["eegs"])
-
         dataset = []
         for i in range(1, 1 + len(raw_dataset)):
             epochs = []
@@ -125,10 +124,15 @@ class EegTraining(object):
         if shuffle_dataset:
             np.random.seed(random_seed)
             np.random.shuffle(indices)
-        train_indices, val_indices = indices[split:], indices[:split]
+        train_indices, val_indices, test_indices = (
+            indices[2 * split :],
+            indices[split : 2 * split],
+            indices[:split],
+        )
         # Creating PT data samplers and loaders:
         train_sampler = SubsetRandomSampler(train_indices)
         valid_sampler = SubsetRandomSampler(val_indices)
+        test_sampler = SubsetRandomSampler(test_indices)
         self.train_loader = torch.utils.data.DataLoader(
             full_dataset,
             batch_size=batch_size,
@@ -139,8 +143,14 @@ class EegTraining(object):
             batch_size=batch_size,
             sampler=valid_sampler,
         )
+        self.test_loader = torch.utils.data.DataLoader(
+            full_dataset,
+            batch_size=batch_size,
+            sampler=test_sampler,
+        )
 
-    def metrics(self, epoch, target, pred):
+    def metrics(self, target, pred):
+        balanced_accuracy_skl = balanced_accuracy_score(target, pred)
         accuracy_skl = accuracy_score(target, pred, normalize=True)
         precision_skl = precision_score(target, pred, average="binary")
         recall_skl = recall_score(target, pred, average="binary")
@@ -149,6 +159,7 @@ class EegTraining(object):
         auc_score = auc(score_fpr, score_tpr)
         score_roc_auc = roc_auc_score(target, pred)
         return (
+            balanced_accuracy_skl,
             accuracy_skl,
             precision_skl,
             recall_skl,
@@ -159,9 +170,10 @@ class EegTraining(object):
             score_roc_auc,
         )
 
-    def train_val(self, n_epochs):
+    def train_val_test(self, n_epochs):
         train_losses = []
         val_losses = []
+        test_losses = []
         self.model.to(self.device)
         self.optimizer = optim.Adam(self.model.parameters())
         optimizer = self.optimizer
@@ -217,6 +229,7 @@ class EegTraining(object):
             target = target.cpu().numpy()
             pred = pred.cpu().numpy()
             (
+                balanced_accuracy_skl,
                 accuracy_skl,
                 precision_skl,
                 recall_skl,
@@ -225,8 +238,9 @@ class EegTraining(object):
                 score_tpr,
                 auc_score,
                 score_roc_auc,
-            ) = self.metrics(epoch, target, pred)
+            ) = self.metrics(target, pred)
             # print metrics
+            print("epoch : ", epoch, " - balanced_accuracy_skl :", balanced_accuracy_skl)
             print("epoch : ", epoch, " - accuracy :", accuracy_skl)
             print("epoch : ", epoch, "- precision : ", precision_skl)
             print("epoch : ", epoch, "- recall :", recall_skl)
@@ -235,23 +249,56 @@ class EegTraining(object):
             print("epoch : ", epoch, "- ROC - tpr :", score_tpr)
             print("epoch : ", epoch, "- auc_score :", auc_score)
             print("epoch : ", epoch, "- roc_auc :", score_roc_auc)
-        # print list of loss on train and val data
-        print("  * train losses  :", train_losses)
-        print("  * val losses :", val_losses)
 
-    def searchgrid(
-        self,
-        decimator_pipeline,
-        filter_pipeline,
-        batch_size,
-        validation_split,
-        n_epochs,
-        sampling_rate,
-    ):
-        for _, decimation_factor in enumerate(decimator_pipeline):
-            for _, (order, highpass, lowpass) in enumerate(filter_pipeline):
-                filter = (order, highpass, lowpass)
-                self.set_loaders(
-                    decimation_factor, sampling_rate, filter, batch_size, validation_split
-                )
-                self.train_val(n_epochs)
+        with torch.no_grad():
+            mini_batch_losses = []
+            indice = 0
+            for x_batch, y_batch in self.test_loader:
+                x_batch = x_batch.to(self.device)
+                y_batch = y_batch.to(self.device)
+                # eval mode
+                self.model.eval()
+                # outputs and loss
+                outputs = self.model(x_batch)
+                loss = self.loss_fn(outputs, y_batch)
+                # print(" test -", indice, " - ", loss)
+                # store loss
+                mini_batch_losses.append(loss.item())
+                # store target and predicted value to compute metrics
+                target_list.append(y_batch)
+                pred_list.append(torch.argmax(outputs, dim=1))
+                indice += 1
+        loss_mean = np.mean(mini_batch_losses)
+        test_losses.append(loss_mean)
+        print("test loss mean = ", loss_mean)
+        # compute metrics
+        target = torch.cat(target_list)
+        pred = torch.cat(pred_list)
+        target = target.cpu().numpy()
+        pred = pred.cpu().numpy()
+        (
+            balanced_accuracy_skl,
+            accuracy_skl,
+            precision_skl,
+            recall_skl,
+            f1_score_skl,
+            score_fpr,
+            score_tpr,
+            auc_score,
+            score_roc_auc,
+        ) = self.metrics(target, pred)
+        # print metrics
+        print("test - balanced_accuracy_skl :", balanced_accuracy_skl)
+        print("test - accuracy :", accuracy_skl)
+        print("test - precision : ", precision_skl)
+        print("test - recall :", recall_skl)
+        print("test - f1 score :", f1_score_skl)
+        print("test - ROC : fpr :", score_fpr)
+        print("test - ROC - tpr :", score_tpr)
+        print("test - auc_score :", auc_score)
+        print("test - roc_auc :", score_roc_auc)
+        # print list of loss on train, val and test data
+        print("  * train losses  :", train_losses)
+        print("  * val losses    :", val_losses)
+        print("  * test loss     :", test_losses)
+        self.results = f1_score_skl
