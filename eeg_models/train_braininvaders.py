@@ -27,13 +27,12 @@ from transforms import ButterFilter, ChannellwiseScaler, Decimator, MarkersTrans
 class EegTraining(object):
     results = None
 
-    def __init__(self, sampling_rate, m_data) -> None:
+    def __init__(self, sampling_rate) -> None:
         self.loss_fn = None
         self.optimizer = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         # window size : number of samples per epochs in output of dataset before decimation
         self.sampling_rate = sampling_rate  # 512
-        self.m_data = m_data
         self.model = None
         self.train_loader = None
         self.val_loader = None
