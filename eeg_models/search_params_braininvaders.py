@@ -240,3 +240,6 @@ def search_parameters(
         lowpass,
         ")",
     )
+
+
+search_parameters()
