@@ -9,8 +9,6 @@ batch_size = 20
 validation_split = 0.2
 n_epochs = 20
 
-train_braininvaders = EegTraining(sampling_rate)
-
 
 def search_parameters(
     decimation_factor=10, epoch_duration=0.9, order=4, highpass=0.5, lowpass=20
@@ -62,6 +60,7 @@ def search_parameters(
         marker=".",
         label="f1_score_decimation_factor",
     )
+    plt.yticks(np.arange(0.2, 0.8, 0.2))
     plt.title("GridSearch for decimation factor")
     plt.xlabel("decimation factors")
     plt.ylabel("f1 score of test")
@@ -105,6 +104,7 @@ def search_parameters(
         marker=".",
         label="f1_score_epoch_duration",
     )
+    plt.yticks(np.arange(0.2, 0.8, 0.2))
     plt.title("GridSearch for epoch duration")
     plt.xlabel("epoch duration")
     plt.ylabel("f1 score of test")
@@ -143,6 +143,7 @@ def search_parameters(
         f1_score_order.append(train_braininvaders.results)
     plt.figure(figsize=(15, 15))
     plt.plot(interval_order, f1_score_order, marker=".", label="f1_score_order")
+    plt.yticks(np.arange(0.2, 0.8, 0.2))
     plt.title("GridSearch for order")
     plt.xlabel("order")
     plt.ylabel("f1 score of test")
@@ -181,6 +182,7 @@ def search_parameters(
         f1_score_highpass.append(train_braininvaders.results)
     plt.figure(figsize=(15, 15))
     plt.plot(interval_highpass, f1_score_highpass, marker=".", label="f1_score_highpass")
+    plt.yticks(np.arange(0.2, 0.8, 0.2))
     plt.title("GridSearch for highpass")
     plt.xlabel("highpass")
     plt.ylabel("f1 score of test")
@@ -219,6 +221,7 @@ def search_parameters(
         f1_score_lowpass.append(train_braininvaders.results)
     plt.figure(figsize=(15, 15))
     plt.plot(interval_lowpass, f1_score_lowpass, marker=".", label="f1_score_lowpass")
+    plt.yticks(np.arange(0.2, 0.8, 0.2))
     plt.title("GridSearch for lowpass")
     plt.xlabel("lowpass")
     plt.ylabel("f1 score of test")
