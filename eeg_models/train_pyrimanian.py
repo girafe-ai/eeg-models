@@ -14,7 +14,7 @@ from eeg_models.pyrimanianclassifier import PyRimanianClassifier
 from transforms import ButterFilter, ChannellwiseScaler, Decimator, MarkersTransformer
 
 
-class TrainPyRimanianClassifier:
+class TrainPyRimanianClassifier(object):
     names = (
         "LR",
         "LDA",
@@ -38,7 +38,8 @@ class TrainPyRimanianClassifier:
         self.dataset = None
 
     def classifier(self, name: str) -> Any:
-        clf = PyRimanianClassifier.select_classifier(name)
+        P = PyRimanianClassifier()
+        clf = P.select_classifier(name)
         return clf
 
     def set_dataset(
@@ -73,10 +74,9 @@ class TrainPyRimanianClassifier:
         epoch_count = int(epoch_duration * final_rate)
 
         raw_dataset = BrainInvadersDataset()
+        dataset = []
         for i in range(1, 1 + len(raw_dataset)):
             eeg_pipe.fit(raw_dataset[i]["eegs"])
-
-        dataset = []
         for i in range(1, 1 + len(raw_dataset)):
             epochs = []
             labels = []
@@ -101,7 +101,7 @@ class TrainPyRimanianClassifier:
         scores = self.scores
         df = pd.DataFrame()
         for name in self.names:
-            (clf, params) = self.classifier(name=name)
+            (clf, params) = self.classifier(name)
             cv = GridSearchCV(
                 clf,
                 params,
